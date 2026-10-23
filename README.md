@@ -1,0 +1,62 @@
+# Drone Drop
+
+A one-button-at-a-time catch game in the spirit of Game & Watch *Parachute*. A drone drops parcels, you slide a delivery van to catch them, and a pelican on the right edge causes trouble. 50 levels across 10 cities.
+
+Single self-contained `index.html` (HTML5 canvas, no build step, no dependencies besides Google Fonts). Portrait phone first (390 x 844 logical scene, scaled to fit), playable on desktop.
+
+## Run it
+
+Open `index.html` in a browser, or serve the folder:
+
+```bash
+npx serve .
+```
+
+Controls: on-screen left/right buttons, drag, arrow keys or A/D. Esc or P pauses.
+
+## Worlds and levels
+
+| Levels | World | Levels | World |
+|---|---|---|---|
+| 1-4 | Harbor Town | 29-33 | Tokyo |
+| 5-8 | New York | 34-38 | China |
+| 9-13 | London | 39-44 | Tropical Paradise |
+| 14-18 | Paris | 45-50 | Sky City |
+| 19-23 | Dubai | | |
+| 24-28 | Sydney | | |
+
+Each level cycles through five times of day (dusk, night, sunrise, day, golden hour) and mirrors alternate levels, so every one of the 50 backdrops is different. The art gets richer as you go: a harbour with a lighthouse, then landmarks (Statue of Liberty, Big Ben, Eiffel Tower, Burj Khalifa, Opera House, Tokyo Tower, pagodas, a volcano island) and finally a floating sky city under an aurora.
+
+## Difficulty
+
+Everything lives in `levelCfg()` and `CONFIG` at the top of `index.html`.
+
+- Levels 1-5: gentle. One to two parcels in flight, slow fall, pelican from level 3 (fish decoy) and level 4 (snatch).
+- Level 6 onward: it bites. Wind gusts, then mixed fall speeds (7), bombs (10), rapid double drops (18), a slippery deck (25) and flickering stealth parcels (35).
+- The drone never plans an impossible drop: it checks that the van can reach each parcel in time (`violation()`).
+- Delivery target per level: `8 + floor(level / 2)`. Stars: 3 for no lives lost, 2 for one, 1 otherwise.
+
+Extras: golden parcels (+50), heart (+1 life), slow-mo and magnet bubbles.
+
+## Paywall
+
+Levels 1-8 are free. Levels 9-50 are the **World Tour**, a one-time $15 purchase (`CONFIG.billing`).
+
+A static page cannot safely confirm a payment by itself, so the build ships fail-closed:
+
+- `Billing.buy()` sends the player to `CONFIG.billing.checkoutUrl` (for example a Stripe Payment Link) with their `client_reference_id`.
+- `Billing.restore()` asks `CONFIG.billing.verifyUrl?client_id=...`, which must answer `{"paid": true}`. Wire it to a small server or function that records the Stripe webhook.
+- With both URLs empty nothing unlocks, except the "Test unlock" button, which only appears on `localhost`.
+- The unlock flag is stored in `localStorage`, so it can be edited by a determined player. For a store release, move to Apple/Google in-app purchase (required for digital goods in app stores) via Capacitor plus RevenueCat, and keep the same `Billing` interface.
+
+## Layout of the code
+
+`index.html` is split into labelled sections: config, utils, save (try/catch localStorage), billing, audio (simple beeps), worlds and levels, background art (cached off-screen per level, cross-faded on level-up), sprites, game logic (fixed 60 Hz step, dt clamped to 50 ms), render, screens/UI, input, boot. Game logic and rendering are separate so a Classic LCD renderer can be added as a second renderer over the same state.
+
+## Status against the build brief
+
+Done: modern game, all five states plus level select, level clear, paywall and victory screens, free-moving van, combo and BIG VAN, pelican snatch and fish, pause, best score persistence, reduced-motion handling.
+
+Not yet: the retro Classic LCD skin (brief step 8, marked optional).
+
+Brief: `docs/Drone Drop build brief.docx`.
