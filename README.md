@@ -36,6 +36,8 @@ Everything lives in `levelCfg()` and `CONFIG` at the top of `index.html`.
 - The drone never plans an impossible drop: it checks that the van can reach each parcel in time (`violation()`).
 - Delivery target per level: `8 + floor(level / 2)`. Stars: 3 for no lives lost, 2 for one, 1 otherwise.
 
+The pelican strikes every 14-22 s early on and every 4-16 s late (`pelGap`). From level 4 about half its events are parcel snatches (rising to 75%), and from level 15 a snatch can chain into a second parcel. Fish runs drop one fish, then two from level 8 and three from level 20. A parcel already over the van when the pelican reaches it is saved.
+
 Extras: golden parcels (+50), heart (+1 life), slow-mo and magnet bubbles.
 
 ## Paywall

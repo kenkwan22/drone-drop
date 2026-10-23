@@ -376,7 +376,10 @@ function levelCfg(L) {
     gap: Math.max(.5, 1.5 - L * .02),
     droneSpeed: Math.min(420, 170 + L * 5),
     pelican: L >= 3, snatch: L >= 4,
-    pelGap: L < 6 ? [28, 40] : [Math.max(8, 15 - (L - 6) * .15), Math.max(14, 25 - (L - 6) * .25)],
+    pelGap: L < 6 ? [14, 22] : [Math.max(4, 10 - (L - 6) * .12), Math.max(7, 16 - (L - 6) * .2)],   // seconds between pelican events
+    snatchP: L >= 4 ? Math.min(.75, .5 + (L - 4) * .01) : 0,   // chance an event is a snatch rather than fish
+    fishVolley: 1 + (L >= 8 ? 1 : 0) + (L >= 20 ? 1 : 0),      // fish dropped per fish run
+    chain: L >= 15 ? .4 : 0,                                    // chance a successful snatch goes for a second parcel
     wind: L >= 6 ? Math.min(80, 18 + (L - 6) * 1.6) : 0,
     spread: L >= 7 ? .10 + Math.min(.1, (L - 7) * .003) : 0,
     gold: L >= 2 ? .06 : 0,
@@ -949,17 +952,24 @@ function updatePelican(dt) {
   switch (p.ph) {
     case 'perch': p.t -= dt; if (p.t <= 0 && G.banner <= 0 && (G.state === 'playing' || G.demo)) { p.ph = 'warn'; p.t = P0.warn; Sfx.play('warn'); } break;
     case 'warn': p.t -= dt; if (p.t <= 0) {
-      const tg = cfg.snatch && Math.random() < .55 ? snatchTarget() : null;
-      if (tg) { p.ph = 'snatch'; p.tgt = tg; } else { p.ph = 'out'; p.fx = rnd(70, 320); p.fy = 252; }
+      const tg = cfg.snatch && Math.random() < cfg.snatchP ? snatchTarget() : null;
+      if (tg) { p.ph = 'snatch'; p.tgt = tg; p.chained = false; } else { p.ph = 'out'; p.fishLeft = cfg.fishVolley; p.fx = rnd(70, 320); p.fy = 252; }
       Sfx.play('squawk'); } break;
     case 'snatch': {
       const tg = p.tgt; if (!tg || tg.dead || tg.passed) { p.ph = 'back'; break; }
       if (fly(tg.x, tg.y, Math.max(P0.flySpeed, tg.vy * 2)) < 26) {
         if (Math.abs(tg.x - G.vanX) <= catchHalf()) { pop('SAVED!', tg.x, tg.y - 30, CYAN); tg.passed = true; tg.caught = true; tg.ct = 0; tg.cx0 = tg.x; tg.cy0 = tg.y; onCatch(tg); }
-        else { tg.dead = true; p.carry = true; sparks(tg.x, tg.y, 8, [WHITE, '#C9D3F0']); pop('SNATCHED', tg.x, tg.y - 20, '#FF8FB0'); loseLife(); }
+        else {
+          tg.dead = true; p.carry = true; sparks(tg.x, tg.y, 8, [WHITE, '#C9D3F0']); pop('SNATCHED', tg.x, tg.y - 20, '#FF8FB0'); loseLife();
+          const nx = !p.chained && Math.random() < cfg.chain ? snatchTarget() : null;     // greedy: go for another one
+          if (nx && nx !== tg && G.state === 'playing') { p.chained = true; p.tgt = nx; Sfx.play('squawk'); break; }
+        }
         p.ph = 'back';
       } } break;
-    case 'out': if (fly(p.fx, p.fy, 480) < 4) { G.fish.push({ id: ++G.ids, kind: 'fish', x: p.x - 28, y: p.y, vy: (cfg.base + 20) * .9, h: 22, passed: false, caught: false, dead: false, ct: 0, wk: 1, s: 1 }); p.ph = 'back'; } break;
+    case 'out': if (fly(p.fx, p.fy, 480) < 4) {
+      G.fish.push({ id: ++G.ids, kind: 'fish', x: p.x - 28, y: p.y, vy: (cfg.base + 20) * .9, h: 22, passed: false, caught: false, dead: false, ct: 0, wk: 1, s: 1 });
+      if (--p.fishLeft > 0) p.fx = clamp(p.x + rnd(70, 120) * (p.x > W / 2 ? -1 : 1), 50, 340); else p.ph = 'back';
+    } break;
     case 'back': if (fly(P0.perchX, P0.perchY, 520) < 3) { p.ph = 'perch'; p.carry = false; p.t = rnd(cfg.pelGap[0], cfg.pelGap[1]); } break;
   }
 }
