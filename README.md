@@ -1,6 +1,6 @@
 # Drone Drop
 
-A one-button-at-a-time catch game in the spirit of Game & Watch *Parachute*. A drone drops parcels, you slide a delivery van to catch them, and a pelican on the right edge causes trouble. 75 levels across 15 worlds.
+A one-button-at-a-time catch game in the spirit of Game & Watch *Parachute*. A drone drops parcels, you slide a delivery van to catch them, and a pelican on the right edge causes trouble. 86 levels across 17 worlds.
 
 Single self-contained `index.html` (HTML5 canvas, no build step, no dependencies besides Google Fonts). Portrait phone first (390 x 844 logical scene, scaled to fit), playable on desktop.
 
@@ -18,16 +18,17 @@ Controls: on-screen left/right buttons, drag, arrow keys or A/D. Esc or P pauses
 
 | Levels | World | Levels | World |
 |---|---|---|---|
-| 1-4 | Harbor Town | 39-43 | Sydney |
-| 5-8 | New York | 44-48 | Tokyo |
-| 9-13 | London | 49-53 | Mount Fuji |
-| 14-18 | Paris | 54-58 | China |
-| 19-23 | Los Angeles | 59-63 | Hawaii |
-| 24-28 | Egypt | 64-69 | Tropical Paradise |
-| 29-33 | Dubai | 70-75 | Sky City |
-| 34-38 | Saudi Arabia | | |
+| 1-4 | Harbor Town | 40-44 | **Neon City 2099** (cyberpunk) |
+| 5-8 | New York | 45-49 | **Chrome Harbor** (futuristic) |
+| 9-13 | London | 50-54 | Saudi Arabia |
+| 14-18 | Paris | 55-59 | Tokyo |
+| 19-23 | Sydney | 60-64 | Mount Fuji |
+| 24-28 | Los Angeles | 65-69 | China |
+| 29-33 | Egypt | 70-74 | Hawaii |
+| 34-39 | Dubai | 75-80 | Tropical Paradise |
+| | | 81-86 | Sky City |
 
-Each level cycles through five times of day (dusk, night, sunrise, day, golden hour) and mirrors alternate levels, so every one of the 75 backdrops is different. The art gets richer as you go: a harbour with a lighthouse, then landmarks (Statue of Liberty, Big Ben, Eiffel Tower, the Hollywood sign and Santa Monica pier, the Giza pyramids and Sphinx, Burj Khalifa, Kingdom Centre, Opera House, Tokyo Tower, Mount Fuji, pagodas, Diamond Head, a volcano island) and finally a floating sky city under an aurora.
+Each level cycles through five times of day (dusk, night, sunrise, day, golden hour; the cyberpunk worlds stay mostly dusk and night) and mirrors alternate levels, so every one of the 86 backdrops is different. From level 40 the look turns futuristic: Neon City has a giant holographic AI head, a monorail, flying cars and neon signs in the rain, and Chrome Harbor has a glowing ring gate, a maglev, a space elevator and hover boats. The art gets richer as you go: a harbour with a lighthouse, then landmarks (Statue of Liberty, Big Ben, Eiffel Tower, the Hollywood sign and Santa Monica pier, the Giza pyramids and Sphinx, Burj Khalifa, Kingdom Centre, Opera House, Tokyo Tower, Mount Fuji, pagodas, Diamond Head, a volcano island) and finally a floating sky city under an aurora.
 
 ## Difficulty
 
@@ -38,13 +39,13 @@ Everything lives in `levelCfg()` and `CONFIG` at the top of `index.html`.
 - The drone never plans an impossible drop: it checks that the van can reach each parcel in time (`violation()`).
 - Delivery target per level: `14 + floor(level * 0.8)` (14 at level 1, 60 at most), so a level takes roughly a minute. Difficulty peaks around level 45-50, then eases off: level 55 onward plays about like level 30, and bosses after level 50 are milder and rarer (60, 70, 75). A heart drops about every 12 deliveries while you are down a life. Stars: 3 for no lives lost, 2 for one, 1 otherwise.
 
-The pelican strikes every 14-22 s early on and every 4-16 s late (`pelGap`). From level 4 about half its events are parcel snatches (rising to 75%), and from level 15 a snatch can chain into a second parcel. Fish runs drop one fish, then two from level 8 and three from level 20. A parcel already over the van when the pelican reaches it is saved.
+The pelican strikes every 14-22 s early on and every 4-16 s late (`pelGap`), and from level 10 both the pelican and the seagulls come about 25-40% more often (`birdGap()`), easing off again after level 50. From level 4 about half its events are parcel snatches (rising to 75%), and from level 15 a snatch can chain into a second parcel. Fish runs drop one fish, then two from level 8 and three from level 20. A parcel already over the van when the pelican reaches it is saved.
 
 Hazards, all tunable in `levelCfg()` and `hzGap()`: seagulls that knock parcels sideways or steal them (level 4), tide surges that shove the van (5), oil slicks that make it skid (6), a rogue drone that drops junk crates you must not catch (8), lightning with a glowing warning zone that stuns the van (9) and fog banks that hide parcels (12). From level 7 every hazard comes round faster.
 
 **Water cannon.** From level 4 a SPRAY button (Space, W or Up on a keyboard) fires a 3-shot tank that refills every 5 s. It auto-aims at the pelican, a seagull near a parcel, the rogue drone or the ape. During TURBO it fires automatically with no limit.
 
-**Boss ape.** On every fifth level from 20 to 50 (then 60, 70 and 75, gentler) a giant ape wades in from the sea, roars, leaps onto the drone and shakes it for a few seconds, so parcels drop at angles. Spraying him makes him let go sooner.
+**Boss ape.** On every fifth level from 20 to 50 (then 60, 70, 80 and 86, gentler) a giant ape wades in from the sea, roars, leaps onto the drone and shakes it for a few seconds, so parcels drop at angles. Spraying him makes him let go sooner.
 
 Extras: golden parcels (+50), heart (+1 life), slow-mo and magnet bubbles.
 
@@ -54,7 +55,7 @@ Six cosmetic vehicles, unlocked by total stars (see `VEHICLES` in `index.html`):
 
 ## Paywall
 
-Levels 1-8 are free. Levels 9-75 are the **World Tour**, a one-time $15 purchase (`CONFIG.billing`).
+Levels 1-8 are free. Levels 9-86 are the **World Tour**, a one-time $15 purchase (`CONFIG.billing`).
 
 A static page cannot safely confirm a payment by itself, so the build ships fail-closed:
 
