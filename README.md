@@ -64,14 +64,11 @@ Six cosmetic vehicles, unlocked by total stars (see `VEHICLES` in `index.html`):
 
 ## Paywall
 
-Levels 1-8 are free. Levels 9-60 are the **World Tour**, a one-time $15 purchase (`CONFIG.billing`).
+Levels 1-8 are free. Levels 9-60 are the **World Tour**, a one-time purchase of about $15 (US$14.99, the closest store price point; `CONFIG.billing`).
 
-A static page cannot safely confirm a payment by itself, so the build ships fail-closed:
+**The plan is the app stores.** The repo is wrapped with Capacitor (`android/`, `ios/`), and in the apps the purchase goes through Apple / Google in-app purchase via RevenueCat, which is the source of truth for the unlock (refunds re-lock, Restore Purchases works, the price shown is localised). Full steps, accounts and checklists are in [`docs/APP_STORE.md`](docs/APP_STORE.md).
 
-- `Billing.buy()` sends the player to `CONFIG.billing.checkoutUrl` (for example a Stripe Payment Link) with their `client_reference_id`.
-- `Billing.restore()` asks `CONFIG.billing.verifyUrl?client_id=...`, which must answer `{"paid": true}`. Wire it to a small server or function that records the Stripe webhook.
-- With both URLs empty nothing unlocks, except the "Test unlock" button, which only appears on `localhost`.
-- The unlock flag is stored in `localStorage`, so it can be edited by a determined player. For a store release, move to Apple/Google in-app purchase (required for digital goods in app stores) via Capacitor plus RevenueCat, and keep the same `Billing` interface.
+The website (GitHub Pages) is a free demo: levels 1-8, and the paywall says the full game is coming to the apps. A web checkout path still exists (`CONFIG.billing.checkoutUrl` and `verifyUrl`, e.g. Stripe), but a static page cannot safely confirm a payment by itself, so it is off by default and the build is fail-closed. The "Test unlock" button only appears on `localhost` and home-network addresses.
 
 ## Layout of the code
 

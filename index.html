@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#070A24">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Drone Drop">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="assets/icon-192.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <title>Drone Drop</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -211,7 +218,7 @@ button:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
         <button class="btn ghost" data-act="dev-unlock" id="pay-dev" hidden>Test unlock (local dev only)</button>
         <button class="btn ghost" data-act="restore">Restore purchase</button>
         <button class="btn ghost" data-act="paylater">Maybe later</button>
-        <p class="fine">One-time purchase of $15 USD. Levels 1&ndash;8 stay free forever.</p>
+        <p class="fine" id="pay-fine">One-time purchase. Levels 1&ndash;8 stay free forever.</p>
       </div>
     </section>
 
@@ -259,7 +266,8 @@ const CONFIG = {
   banner:  2.4,
   billing: {
     productId: 'drone-drop-world-tour',
-    priceUSD: 15,
+    priceUSD: 14.99,   // closest App Store / Play price point to $15; in the apps the real localised price comes from the store
+    revenueCat: { iosKey: '', androidKey: '', entitlement: 'world_tour' },   // public SDK keys from the RevenueCat dashboard (see docs/APP_STORE.md)
     // Production purchases need a server that confirms payment (see README):
     checkoutUrl: '',   // e.g. a Stripe Payment Link
     verifyUrl: ''      // endpoint returning {"paid":true} for ?client_id=...
@@ -302,22 +310,56 @@ const Save = {
 };
 
 /* ------------------------------ BILLING --------------------------------- */
-/* Static-site friendly: price lives in CONFIG, the unlock flag is stored locally.
-   Real money must be confirmed server-side (verifyUrl) — see README "Payments". */
+/* Two modes. In the iOS / Android app (Capacitor) the one-time World Tour purchase goes through the store's in-app
+   purchase via RevenueCat, and the entitlement it reports is the source of truth. On the web the flag is local and
+   real money must be confirmed server-side (verifyUrl); see README "Payments" and docs/APP_STORE.md. */
 const Billing = {
-  isDev: ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname),
+  isDev: ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname) || /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(location.hostname) || /\.local$/.test(location.hostname),   // local or home-network testing only
+  rc: null, pkg: null, price: '',
+  native() { return !!(window.Capacitor && typeof Capacitor.isNativePlatform === 'function' && Capacitor.isNativePlatform()); },
+  priceLabel() { return this.price || '$' + CONFIG.billing.priceUSD; },
   unlocked() { return !!Save.d.unlocked; },
   grant() { Save.d.unlocked = true; Save.flush(); },
+  async init() {                                                         // native only: connect to the store, learn the localised price, sync the entitlement
+    if (!this.native()) return;
+    try {
+      const rcfg = CONFIG.billing.revenueCat, key = Capacitor.getPlatform() === 'ios' ? rcfg.iosKey : rcfg.androidKey;
+      if (!key) { console.warn('RevenueCat key missing: purchases are disabled in this build.'); return; }
+      this.rc = Capacitor.registerPlugin('Purchases'); await this.rc.configure({ apiKey: key });
+      await this.refresh();
+      const o = await this.rc.getOfferings(), cur = o && o.current;
+      this.pkg = cur && cur.availablePackages && (cur.availablePackages.find(p => p.packageType === 'LIFETIME') || cur.availablePackages[0]) || null;
+      if (this.pkg && this.pkg.product && this.pkg.product.priceString) { this.price = this.pkg.product.priceString; updatePriceLabels(); }
+    } catch (e) { console.warn('Billing init failed', e); }
+  },
+  async refresh() {
+    const { customerInfo } = await this.rc.getCustomerInfo(); const active = !!(customerInfo.entitlements && customerInfo.entitlements.active && customerInfo.entitlements.active[CONFIG.billing.revenueCat.entitlement]);
+    Save.d.unlocked = active; Save.flush(); return active;              // store is the truth in the app: refunds revoke, restores grant
+  },
   async buy() {
     const b = CONFIG.billing;
+    if (this.native()) {
+      if (!this.rc || !this.pkg) { toast('The store is not ready yet. Check your connection and try again.'); return false; }
+      try {
+        const r = await this.rc.purchasePackage({ aPackage: this.pkg }), ent = r.customerInfo.entitlements.active || {};
+        if (ent[b.revenueCat.entitlement]) { this.grant(); return true; }
+      } catch (e) { if (!(e && e.userCancelled)) toast('The purchase did not go through. You have not been charged.'); }
+      return false;
+    }
     if (b.checkoutUrl) {
       const u = new URL(b.checkoutUrl); u.searchParams.set('client_reference_id', Save.d.cid);
       location.href = u.toString(); return false;
     }
-    toast('Store checkout is not configured yet.'); return false;
+    toast('The full game unlocks in the iOS and Android apps, coming soon.'); return false;
   },
   async restore() {
     const b = CONFIG.billing;
+    if (this.native()) {
+      if (!this.rc) { toast('The store is not ready yet.'); return false; }
+      try { const { customerInfo } = await this.rc.restorePurchases(); const on = !!(customerInfo.entitlements.active || {})[b.revenueCat.entitlement];
+        if (on) { this.grant(); toast('Purchase restored. Enjoy the World Tour!'); return true; } toast('No purchase found for this account.'); } catch (e) { toast('Could not reach the store. Try again.'); }
+      return false;
+    }
     if (!b.verifyUrl) { toast('Nothing to restore on this device.'); return false; }
     try {
       const r = await fetch(b.verifyUrl + '?client_id=' + encodeURIComponent(Save.d.cid));
@@ -1881,6 +1923,7 @@ function buildHow() {
     else { c.scale(.8, .8); drawItem(c, k, 0); }
   });
 }
+function updatePriceLabels() { const p = Billing.priceLabel(); $('#pay-price').textContent = p; $('#pay-fine').textContent = 'One-time purchase of ' + p + '. Levels 1–8 stay free forever.'; }
 const thumbCache = {};
 function buildLevels() {
   const box = $('#lv-list'), free = CONFIG.levels.free, un = Billing.unlocked(); box.innerHTML = '';
@@ -1893,7 +1936,7 @@ function buildLevels() {
       const st = Save.d.stars[L] || 0, ok = canPlay(L), pay = L > free && !un, cur = ok && L === playLevel() && !st;
       btns += `<button class="lv${st ? ' done' : ''}${cur ? ' cur' : ''}${!ok && !pay ? ' off' : ''}${pay ? ' pay' : ''}" data-act="pick" data-level="${L}" aria-label="Level ${L}${pay ? ' locked' : ''}">${pay ? '🔒' : L}<i>${st ? '★'.repeat(st) : '&nbsp;'}</i></button>`;
     }
-    el.innerHTML = `<div class="thumbwrap"></div><div><h3>${w.name}</h3><small>Levels ${w.first}–${w.last}</small>${locked ? `<small class="price">Unlock with World Tour · $${CONFIG.billing.priceUSD}</small>` : ''}</div><div class="lvls">${btns}</div>`;
+    el.innerHTML = `<div class="thumbwrap"></div><div><h3>${w.name}</h3><small>Levels ${w.first}–${w.last}</small>${locked ? `<small class="price">Unlock with World Tour · ${Billing.priceLabel()}</small>` : ''}</div><div class="lvls">${btns}</div>`;
     el.querySelector('.thumbwrap').replaceWith(th); box.appendChild(el);
   }
 }
@@ -1918,7 +1961,7 @@ function act(a, d) {
     case 'equip': { const v = VEHICLES.find(x => x.id === d.id); if (v && vehUnlocked(v)) { Save.d.vehicle = v.id; Save.flush(); buildGarage(); } else toast('Earn more stars to unlock this ride.'); } break;
     case 'back': show(ui.from === 'levels' || ui.from === 'howto' ? 'title' : ui.from || 'title'); break;
     case 'mute': Save.d.mute = !Save.d.mute; Save.flush(); refreshTitle(); break;
-    case 'pick': { const L = +d.level; if (canPlay(L)) startLevel(L, 'fresh'); else if (L > CONFIG.levels.free) { $('#pay-price').textContent = '$' + CONFIG.billing.priceUSD; ui.payFrom = 'levels'; $('#pay-kicker').textContent = 'Locked levels'; show('pay'); } else toast('Clear the earlier levels first.'); } break;
+    case 'pick': { const L = +d.level; if (canPlay(L)) startLevel(L, 'fresh'); else if (L > CONFIG.levels.free) { updatePriceLabels(); ui.payFrom = 'levels'; $('#pay-kicker').textContent = 'Locked levels'; show('pay'); } else toast('Clear the earlier levels first.'); } break;
     case 'resume': togglePause(); break;
     case 'restart': startLevel(G.L, 'retry'); break;
     case 'retry': startLevel(G.L, 'retry'); break;
@@ -1988,7 +2031,7 @@ function frame(ts) {
 }
 function boot() {
   Save.load(); bgScale = Math.min(2, Math.max(1, window.devicePixelRatio || 1)); resize();
-  $('#pay-dev').hidden = !Billing.isDev; $('#pay-price').textContent = '$' + CONFIG.billing.priceUSD;
+  $('#pay-dev').hidden = !Billing.isDev; updatePriceLabels(); if (Billing.native()) Billing.init().then(() => { refreshTitle(); });
   buildHow(); refreshTitle(); startDemo(); show('title');
   if (document.fonts && document.fonts.load) { document.fonts.load(`700 24px "Space Mono"`); document.fonts.load(`700 20px "Space Grotesk"`); }
   requestAnimationFrame(frame);

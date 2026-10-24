@@ -1,0 +1,23 @@
+{
+  "name": "drone-drop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Drone Drop: iOS and Android wrapper (Capacitor) around the single-file web game.",
+  "scripts": {
+    "build:web": "node scripts/build-web.mjs",
+    "sync": "npm run build:web && npx cap sync",
+    "android": "npm run sync && npx cap open android",
+    "ios": "npm run sync && npx cap open ios",
+    "assets": "npx capacitor-assets generate --iconBackgroundColor #2A2160 --splashBackgroundColor #070A24"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/ios": "^7.0.0",
+    "@revenuecat/purchases-capacitor": "^11.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^7.0.0"
+  }
+}
