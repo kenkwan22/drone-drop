@@ -337,6 +337,8 @@ const Sfx = {
       case 'warn': this.tone(1200, .09, 'square', .04); this.tone(1200, .09, 'square', .04, 0, .14); break;
       case 'squawk': this.tone(500, .2, 'sawtooth', .05, 250); break;
       case 'power': [660, 880, 1320].forEach((f, i) => this.tone(f, .09, 'triangle', .05, 0, i * .05)); break;
+      case 'storm': this.tone(70, 1.2, 'sawtooth', .05, 30); this.tone(110, 1, 'triangle', .04, -40, .1); break;
+      case 'thunder': this.tone(60, .7, 'sawtooth', .05, -25); this.tone(90, .5, 'square', .025, -40, .05); break;
       case 'roar': this.tone(130, .9, 'sawtooth', .07, -70); this.tone(90, 1, 'square', .05, -40, .05); break;
       case 'bomb': this.tone(120, .4, 'sawtooth', .08, -80); this.tone(60, .5, 'square', .06, 0, .02); break;
       case 'fish': this.tone(300, .25, 'triangle', .05, -120); break;
@@ -413,7 +415,7 @@ const kongCfg = L => L >= 20 && (L <= 50 ? L % 5 === 0 : L % 10 === 0 || L === C
 function levelCfg(L) {
   const D = L <= 50 ? Math.min(L, 42) : Math.max(24, 36 - (L - 51) * .7);
   const c = cfgFor(Math.floor(D)); c.L = L;
-  if (L > 50) { c.pelGap = c.pelGap.map(v => v * 1.35); c.gull = c.gull.map(v => v * 1.35); c.gullSteal *= .6; }   // the birds calm down after level 50 too
+  if (L > 50) { c.pelGap = c.pelGap.map(v => v * 1.35); c.gull = c.gull.map(v => v * 1.35); c.gullSteal *= .6; c.storm = Object.assign({}, c.storm, { gap: c.storm.gap.map(v => v * 1.4), force: c.storm.force * .8 }); }   // the birds calm down after level 50 too
   c.quota = L <= 50 ? Math.min(48, 14 + Math.floor(L * .8)) : 48 - Math.floor((L - 50) / 5) * 2; c.kong = kongCfg(L); return c;
 }
 function cfgFor(L) {
@@ -441,6 +443,8 @@ function cfgFor(L) {
     junkN: 2 + (L >= 30 ? 1 : 0),
     bolt: L >= 9 ? hzGap(L, 16, 24, 8, 12) : null,       // lightning stuns the van
     fog: L >= 12 ? hzGap(L, 20, 28, 10, 15) : null,      // fog banks hide parcels
+    // storms (level 15+): a gale pushes parcels sideways across the screen; from level 20 they come round much more often, last longer and can reverse mid-storm
+    storm: L >= 15 ? { gap: L >= 20 ? [Math.max(9, 18 - (L - 20) * .2), Math.max(14, 26 - (L - 20) * .25)] : [26, 36], dur: L >= 20 ? [7, 10] : [5, 7], force: Math.min(200, 120 + (L - 15) * 3), squall: L >= 20 } : null,
     // boss levels: a giant ape climbs out of the sea, leaps onto the drone and shakes it so parcels drop at angles
     kong: kongCfg(L),
     wind: L >= 6 ? Math.min(60, 18 + (L - 6) * 1.2) : 0,
@@ -454,7 +458,7 @@ function cfgFor(L) {
   };
 }
 const INTRO = { 1: 'Slide the van under the parcels', 2: 'New: golden parcels are worth 50', 3: 'New: power-up bubbles',
-  4: 'New: pelican, seagulls & your SPRAY cannon', 5: 'New: tide surges shove the van', 6: 'New: oil slicks & wind gusts', 7: 'Hazards now come faster. Parcels fall at mixed speeds',
+  4: 'New: pelican, seagulls & your SPRAY cannon', 15: 'New: storms blow parcels sideways. Aim upwind!', 5: 'New: tide surges shove the van', 6: 'New: oil slicks & wind gusts', 7: 'Hazards now come faster. Parcels fall at mixed speeds',
   8: 'New: rogue drone drops junk. Do not catch it', 9: 'New: lightning. Stay out of the glow', 10: 'New: bombs! Never catch the dark ones', 12: 'New: fog banks hide the parcels', 18: 'New: rapid-fire double drops',
   20: 'BOSS: a giant ape shakes the drone!', 25: 'BOSS: the ape is back, and the deck is slippery', 30: 'BOSS: the ape is angrier', 35: 'BOSS: the ape, and stealth parcels' };
 
@@ -1052,6 +1056,7 @@ const G = {
   parcels: [], fish: [], fx: [], pops: [], ids: 0, time: 0,
   drone: { x: 195, y: CONFIG.drone.y, tilt: 0, cool: 1, next: null },
   pel: { ph: 'perch', t: 10, ev: null, x: CONFIG.pelican.perchX, y: CONFIG.pelican.perchY, tgt: null, flap: 0, carry: false, fx: 0, fy: 0 },
+  storm: null, stormWind: 0,
   hz: { gulls: [], oil: [], bolts: [], fog: [], tides: [], rogue: null, kong: null, t: {} }, stunT: 0, jets: [], cannon: { a: -1.2, cool: 0 }, tank: 3,
   wind: 0, windT: 2, windTarget: 0, slowT: 0, magnetT: 0, banner: 0, bannerTitle: '', bannerSub: '', bannerTip: '',
   shake: 0, flash: 0, flashCol: '255,92,138', endT: 0, stats: { caught: 0, bestCombo: 0, turbo: 0 }, bonus: 0
@@ -1076,7 +1081,7 @@ function resetField() {
   const hc = G.cfg; G.tank = CONFIG.cannon.tank; G.hz = { gulls: [], oil: [], bolts: [], fog: [], tides: [], rogue: null,
     kong: hc.kong ? { ph: 'idle', t: rnd(hc.kong.gap[0], hc.kong.gap[1]) * .8, x: Math.random() < .5 ? 70 : 320, hold: 0, u: 0, px: 0, py: 0, sc: 1, breath: 0, flinch: 0 } : null,
     t: { gull: hc.gull ? rnd(4, 8) : 0, oil: hc.oil ? rnd(5, 9) : 0, bolt: hc.bolt ? rnd(6, 10) : 0, fog: hc.fog ? rnd(8, 13) : 0, tide: hc.tide ? rnd(6, 10) : 0, rogue: hc.rogue ? rnd(6, 11) : 0 } };
-  G.stunT = 0; G.jets = []; G.cannon = { a: -1.2, cool: 0 }; G.nextHeart = 10;
+  G.stunT = 0; G.jets = []; G.cannon = { a: -1.2, cool: 0 }; G.nextHeart = 10; G.storm = null; G.stormWind = 0; G.hz.t.storm = hc.storm ? rnd(9, 15) : 0;
   const g = G.cfg.pelGap; G.pel = { ph: 'perch', t: rnd(g[0], g[1]) * .6, ev: null, x: CONFIG.pelican.perchX, y: CONFIG.pelican.perchY, tgt: null, flap: 0, carry: false, fx: 0, fy: 0 };
 }
 function startLevel(L, mode) {
@@ -1103,8 +1108,10 @@ const catchable = k => k === 'box' || k === 'gold';
 function violation(x, vy, kind) {
   if (!catchable(kind)) return 0;
   const bin = binLine(), vs = CONFIG.van.speed * (G.cfg.slip ? .88 : 1), d = G.drone, factor = .7 + .3 * G.cfg.L / CONFIG.levels.total;
-  const list = G.parcels.filter(p => !p.passed && catchable(p.kind)).map(p => ({ x: p.x, t: (bin - (p.y + 15)) / p.vy }));
-  list.push({ x, t: Math.abs(x - d.x) / G.cfg.droneSpeed + (bin - (d.y + 45)) / vy });
+  const sw = stormWindAhead();                                            // storms push parcels sideways, so judge where they will land, not where they start
+  const list = G.parcels.filter(p => !p.passed && catchable(p.kind)).map(p => { const t = (bin - (p.y + 15)) / p.vy; return { x: clamp(p.x + sw * t, 16, W - 16), t }; });
+  const tf = (bin - (d.y + 45)) / vy;
+  list.push({ x: clamp(x + sw * tf, 16, W - 16), t: Math.abs(x - d.x) / G.cfg.droneSpeed + tf });
   list.sort((a, b) => a.t - b.t);
   let px = G.vanX, pt = 0, worst = -1e9;
   for (const q of list) { worst = Math.max(worst, Math.abs(q.x - px) / vs - ((q.t - pt) * factor + .08)); px = q.x; pt = q.t; }
@@ -1118,9 +1125,10 @@ function planDrop() {
   if (!G.demo && G.lives < CONFIG.lives && G.deliveries >= G.nextHeart) { kind = 'heart'; G.nextHeart = G.deliveries + 12; }   // long levels: a heart roughly every 12 deliveries while you're hurt
   const ramp = Math.min(cfg.rampMax, 1.5 * G.deliveries);
   let vy = (cfg.base + ramp) * (1 + rnd(-cfg.spread, cfg.spread)); if (kind === 'bomb') vy *= .9;
-  let best = rnd(40, 350), bv = 1e9;
+  const sw = stormWindAhead(), tf = (binLine() - (G.drone.y + 45)) / vy, lo = clamp(40 - sw * tf, 36, 354), hi = clamp(350 - sw * tf, lo + 20, 354);   // aim upwind so the gale carries it onto the deck
+  let best = rnd(lo, hi), bv = 1e9;
   for (let i = 0; i < 12; i++) {
-    const x = rnd(36, 354); if (Math.abs(x - G.drone.x) < 40 && i < 11) continue;
+    const x = rnd(lo, hi); if (Math.abs(x - G.drone.x) < 40 && i < 11) continue;
     const v = violation(x, vy, kind); if (v < bv) { bv = v; best = x; } if (v <= 0) break;
   }
   return { x: best, kind, vy };
@@ -1169,6 +1177,48 @@ function updateVan(dt) {
   if (Math.abs(G.vanV) > 12) G.vanDir = Math.sign(G.vanV);
   G.wheel += G.vanV * dt / 10;
 }
+/* ---- storms (level 15+): a gale shoves parcels across the sky instead of straight down ---- */
+function stormWindAhead() { const s = G.storm; if (!s) return 0; return s.ph === 'warn' ? s.dir * s.force : G.stormWind; }
+function updateStorm(dt) {
+  const cfg = G.cfg, h = G.hz; if (!cfg.storm) { G.stormWind = 0; return; }
+  const active = G.banner <= .6 && (G.state === 'playing' || G.demo); let s = G.storm;
+  if (!s) {
+    G.stormWind = 0; h.t.storm -= dt;
+    if (h.t.storm <= 0) {
+      if (!active) { h.t.storm = 1; return; }
+      const st = cfg.storm, dir = Math.random() < .5 ? -1 : 1;
+      G.storm = s = { ph: 'warn', t: 1.6, dir, force: st.force * rnd(.85, 1), dur: rnd(st.dur[0], st.dur[1]), a: 0, dark: 0, sgn: 1, sgnT: 1, flip: st.squall && Math.random() < .65, flipped: false, flash: rnd(1.2, 2.4), age: 0 };
+      Sfx.play('storm'); pop('STORM!', 195, 300, '#FFB36B', 32);
+    }
+    return;
+  }
+  s.age += dt; s.sgn = smooth(s.sgn, s.sgnT, dt, 3.2);
+  if (s.ph === 'warn') { s.t -= dt; s.dark = smooth(s.dark, .7, dt, 3); if (s.t <= 0) { s.ph = 'on'; s.t = s.dur; } }
+  else if (s.ph === 'on') {
+    s.t -= dt; s.dark = smooth(s.dark, 1, dt, 2); s.a = smooth(s.a, 1, dt, 2.4);
+    if (s.flip && !s.flipped && s.t < s.dur * .5) { s.flipped = true; s.sgnT = -1; pop('WIND TURNS!', 195, 300, '#FFB36B', 24); Sfx.play('warn'); }       // squall: the gale swings round and flings parcels back
+    s.flash -= dt; if (s.flash <= 0) { s.flash = rnd(1.6, 3.6); if (!REDUCED) { G.flash = Math.max(G.flash, .35); G.flashCol = '255,255,255'; } Sfx.play('thunder'); }
+    if (s.t <= 0) { s.ph = 'fade'; s.t = 1.5; }
+  } else { s.t -= dt; s.a = smooth(s.a, 0, dt, 3); s.dark = smooth(s.dark, 0, dt, 2.4); if (s.t <= 0) { G.storm = null; G.stormWind = 0; h.t.storm = rnd(cfg.storm.gap[0], cfg.storm.gap[1]); return; } }
+  G.stormWind = s.dir * s.force * s.a * s.sgn;
+}
+function drawStorm(c, t) {
+  const s = G.storm; if (!s) return;
+  c.save(); c.fillStyle = `rgba(8,12,40,${.5 * s.dark})`; c.fillRect(0, 0, W, H);
+  for (let i = 0; i < 7; i++) { const x = (((t * 26 * s.dir + i * 83) % (W + 240)) + W + 240) % (W + 240) - 120, y = 30 + (i * 37) % 150; const g = c.createRadialGradient(x, y, 6, x, y, 90); g.addColorStop(0, `rgba(20,26,60,${.85 * s.dark})`); g.addColorStop(1, 'rgba(20,26,60,0)'); c.fillStyle = g; c.fillRect(x - 100, y - 100, 200, 200); }   // rolling storm clouds
+  const sw = G.stormWind || s.dir * s.force * .3; c.strokeStyle = `rgba(190,215,255,${.38 * s.dark})`; c.lineWidth = 1.3; c.beginPath();
+  for (let i = 0; i < 70; i++) { const sp = 520 + (i % 5) * 70, y = ((t * sp + i * 59) % (H + 40)) - 20, x = (((i * 97 + t * sw * .35) % (W + 60)) + W + 60) % (W + 60) - 30; c.moveTo(x, y); c.lineTo(x + sw * .09, y + 20); }
+  c.stroke();
+  c.strokeStyle = `rgba(255,255,255,${.22 * Math.min(1, s.a * 1.5)})`; c.lineWidth = 1.6; c.beginPath();                                                    // gale streaks
+  for (let i = 0; i < 9; i++) { const y = 210 + i * 56, dir = Math.sign(sw) || s.dir, x = ((t * Math.abs(sw) * 1.6 + i * 111) % (W + 140)) - 70, xx = dir > 0 ? x : W - x; c.moveTo(xx, y); c.lineTo(xx + dir * 46, y); }
+  c.stroke();
+  if (s.ph === 'warn') {                                                                                                                                       // big chevrons: which way it will blow
+    const a = .5 + .5 * Math.sin(t * 14); c.globalAlpha = .55 + .35 * a; c.fillStyle = '#FFB36B'; c.strokeStyle = INK; c.lineWidth = 3;
+    for (let i = 0; i < 3; i++) { const x = 195 + s.dir * (i - 1) * 46; poly(c, [x - s.dir * 16, 360, x + s.dir * 16, 392, x - s.dir * 16, 424]); c.stroke(); }
+    c.globalAlpha = 1; txt(c, 'STORM INCOMING', 195, 342, `700 20px ${FONT}`, '#FFE0B8', 'center');
+  }
+  c.restore();
+}
 function updateWind(dt) {
   const cfg = G.cfg; if (!cfg.wind) { G.wind = 0; return; }
   G.windT -= dt;
@@ -1181,7 +1231,7 @@ function updateItems(dt) {
     if (p.dead) continue;
     if (p.caught) { p.ct += dt; const k = Math.min(1, p.ct / .14); p.x = lerp(p.cx0, G.vanX, k); p.y = lerp(p.cy0, bin - 4, k); p.s = 1 - .4 * k; if (k >= 1) p.dead = true; continue; }
     p.y += p.vy * dt;
-    if (!p.passed) { p.vx = (p.vx || 0) * (1 - Math.min(1, dt * 1.6)); p.x = clamp(p.x + (G.wind * p.wk + p.vx + (p.dvx || 0)) * dt, 16, W - 16); }
+    if (!p.passed) { p.vx = (p.vx || 0) * (1 - Math.min(1, dt * 1.6)); p.x = clamp(p.x + (G.wind * p.wk + p.vx + (p.dvx || 0) + G.stormWind) * dt, 16, W - 16); }
     if (!p.passed && p.y + p.h / 2 >= bin) {
       p.passed = true;
       if (Math.abs(p.x - G.vanX) <= catchHalf()) { p.caught = true; p.ct = 0; p.cx0 = p.x; p.cy0 = p.y; onCatch(p); }
@@ -1490,7 +1540,7 @@ function update(dt) {
   if (G.state === 'playing' || G.demo) {
     const ts = G.slowT > 0 ? CONFIG.powers.slowFactor : 1, sdt = dt * ts;
     if (G.banner > 0) G.banner -= dt;
-    updateVan(dt); updateWind(sdt); updateDrone(sdt); updateItems(sdt); updatePelican(sdt); updateHazards(sdt); updateKong(sdt);
+    updateVan(dt); updateWind(sdt); updateStorm(sdt); updateDrone(sdt); updateItems(sdt); updatePelican(sdt); updateHazards(sdt); updateKong(sdt);
     updateCannon(dt);
     if (G.turboT > 0) G.turboT = Math.max(0, G.turboT - dt);
     G.slowT = Math.max(0, G.slowT - dt); G.magnetT = Math.max(0, G.magnetT - dt);
@@ -1586,7 +1636,8 @@ function drawHUD(c, t) {
   const pr = clamp(G.deliveries / G.cfg.quota, 0, 1); if (pr > 0) { rr(c, x0 + 14, 120, Math.max(6, 170 * pr), 6, 3); c.fillStyle = AMBER; c.fill(); }
   let px = 16; if (G.slowT > 0) { pill(c, px, 144, 96, 'SLOW-MO ' + G.slowT.toFixed(0) + 's', '#8FC8FF'); px += 102; }
   if (G.magnetT > 0) pill(c, px, 144, 96, 'MAGNET ' + G.magnetT.toFixed(0) + 's', '#C9A0FF');
-  if (G.cfg.wind && Math.abs(G.wind) > 8) { const dir = Math.sign(G.wind), n = Math.min(3, 1 + Math.floor(Math.abs(G.wind) / 35)); pill(c, 290, 144, 84, 'WIND ' + (dir < 0 ? '‹'.repeat(n) : '›'.repeat(n)), WHITE); }
+  if (G.storm) { const s = G.storm, dn = s.ph === 'warn' ? s.dir : (Math.sign(G.stormWind) || s.dir), n = s.ph === 'warn' ? 1 : Math.min(3, 1 + Math.floor(Math.abs(G.stormWind) / 70)); pill(c, 250, 144, 124, (s.ph === 'warn' ? 'STORM ' : 'GALE ') + (dn < 0 ? '‹'.repeat(n) : '›'.repeat(n)), '#FFB36B'); }
+  else if (G.cfg.wind && Math.abs(G.wind) > 8) { const dir = Math.sign(G.wind), n = Math.min(3, 1 + Math.floor(Math.abs(G.wind) / 35)); pill(c, 290, 144, 84, 'WIND ' + (dir < 0 ? '‹'.repeat(n) : '›'.repeat(n)), WHITE); }
   for (const [x, dir, on] of [[BTN.lx, -1, inp.left], [BTN.rx, 1, inp.right]]) {
     rr(c, x, BTN.y, BTN.w, BTN.h, 22); c.fillStyle = on ? 'rgba(61,240,224,.28)' : 'rgba(11,16,48,.72)'; c.fill(); c.strokeStyle = on ? CYAN : 'rgba(255,255,255,.18)'; c.lineWidth = 1.8; c.stroke();
     const cx = x + BTN.w / 2, cy = BTN.y + BTN.h / 2; c.fillStyle = on ? CYAN : WHITE; poly(c, [cx - dir * 14, cy - 15, cx + dir * 14, cy, cx - dir * 14, cy + 15]);
@@ -1672,7 +1723,7 @@ function render(t) {
   const d = G.drone; c.save(); c.translate(d.x + (d.jx || 0), d.y + (d.jy || 0)); drawDrone(c, t, d.tilt); c.restore();
   if (Math.abs(G.wind) > 12 && G.state === 'playing') { c.strokeStyle = 'rgba(255,255,255,.16)'; c.lineWidth = 1.5; for (let i = 0; i < 8; i++) { const y = 230 + i * 62, x = ((t * G.wind * 2.2 + i * 97) % (W + 120) + W + 120) % (W + 120) - 60;
     c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.sign(G.wind) * 40, y); c.stroke(); } }
-  drawHazardsHigh(c, t); drawFx(c); c.restore();
+  drawHazardsHigh(c, t); drawFx(c); drawStorm(c, t); c.restore();
   if (G.state !== 'title' && !G.demo) drawHUD(c, t);
   if (G.flash > 0) { c.fillStyle = `rgba(${G.flashCol},${G.flash * .22})`; c.fillRect(0, 0, W, H); }
 }

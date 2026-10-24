@@ -43,6 +43,8 @@ The pelican strikes every 14-22 s early on and every 4-16 s late (`pelGap`), and
 
 Hazards, all tunable in `levelCfg()` and `hzGap()`: seagulls that knock parcels sideways or steal them (level 4), tide surges that shove the van (5), oil slicks that make it skid (6), a rogue drone that drops junk crates you must not catch (8), lightning with a glowing warning zone that stuns the van (9) and fog banks that hide parcels (12). From level 7 every hazard comes round faster.
 
+**Storms (level 15+).** A storm rolls in with a "STORM INCOMING" warning and big chevrons showing the direction, then a gale blows parcels sideways across the screen (up to 120-200 px/s) instead of straight down. The drone aims upwind so it is always winnable. From level 20 storms come roughly twice as often, last 7-10 s and can swing round mid-storm ("WIND TURNS!"). They ease off after level 50.
+
 **Water cannon.** From level 4 a SPRAY button (Space, W or Up on a keyboard) fires a 3-shot tank that refills every 5 s. It auto-aims at the pelican, a seagull near a parcel, the rogue drone or the ape. During TURBO it fires automatically with no limit.
 
 **Boss ape.** On every fifth level from 20 to 50 (then 60, 70, 80 and 86, gentler) a giant ape wades in from the sea, roars, leaps up and grabs the drone's skid. He hangs there swinging like a pendulum with random lurches, dragging the drone from side to side, and parcels leave with the drone's sideways speed, so their angle is hard to predict. Spraying him makes him let go sooner.
