@@ -400,10 +400,11 @@ function palette(info) {
 /* ---- difficulty: gentle to level 5, then it bites ---- */
 const fallBase = L => L <= 5 ? 120 + 15 * (L - 1) : Math.min(360, 180 + 7 * (L - 5));
 const hzGap = (L, a, b, fa, fb) => { const hf = L >= 7 ? Math.max(.55, 1 - (L - 6) * .03) : 1; return [Math.max(fa, a * hf), Math.max(fb, b * hf)]; };
-/* Difficulty plateaus at level 45; later levels keep that pressure but are longer and still get boss ape levels. */
-const kongCfg = L => L >= 20 && L % 5 === 0 ? { gap: [11, 17], hold: Math.min(5, 3.5 + (L - 20) / 5 * .5), dvx: Math.min(125, 85 + (L - 20) * 3) } : null;
+/* Difficulty peaks at level 45-50, then eases off again so the late worlds are a victory lap, not a wall (level 75 plays like level ~32). */
+const kongCfg = L => L >= 20 && (L <= 50 ? L % 5 === 0 : L % 10 === 0 || L === 75) ? { gap: L > 50 ? [14, 20] : [11, 17], hold: L > 50 ? 3.5 : Math.min(5, 3.5 + (L - 20) / 5 * .5), dvx: L > 50 ? 85 : Math.min(125, 85 + (L - 20) * 3) } : null;
 function levelCfg(L) {
-  const c = cfgFor(Math.min(L, 45)); c.L = L; c.quota = Math.min(60, 14 + Math.floor(L * .8)); c.kong = kongCfg(L); return c;
+  const D = L <= 50 ? Math.min(L, 45) : Math.max(24, 36 - (L - 51) * .7);
+  const c = cfgFor(Math.floor(D)); c.L = L; c.quota = L <= 50 ? Math.min(54, 14 + Math.floor(L * .8)) : 54 - Math.floor((L - 50) / 5) * 2; c.kong = kongCfg(L); return c;
 }
 function cfgFor(L) {
   const base = fallBase(L), next = fallBase(Math.min(CONFIG.levels.total, L + 1));
