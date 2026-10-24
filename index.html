@@ -267,7 +267,7 @@ const CONFIG = {
   banner:  2.4,
   billing: {
     productId: 'drone-drop-world-tour',
-    priceUSD: 14.99,   // closest App Store / Play price point to $15; in the apps the real localised price comes from the store
+    priceUSD: 9.99,   // the World Tour price; in the apps the real localised price comes from the store
     revenueCat: { iosKey: '', androidKey: '', entitlement: 'world_tour' },   // public SDK keys from the RevenueCat dashboard (see docs/APP_STORE.md)
     // Production purchases need a server that confirms payment (see README):
     checkoutUrl: '',   // e.g. a Stripe Payment Link
@@ -485,7 +485,7 @@ function palette(info) {
 }
 
 /* ---- difficulty: gentle to level 5, then it bites ---- */
-const fallBase = L => L <= 5 ? 120 + 15 * (L - 1) : Math.min(360, 180 + 7 * (L - 5));
+const fallBase = L => L === 1 ? 150 : L === 2 ? 158 : L <= 5 ? 120 + 15 * (L - 1) : Math.min(360, 180 + 7 * (L - 5));   // levels 1 and 2 start a little quicker
 // pelican and seagull attacks get noticeably busier from level 10 (gaps x0.75, down to x0.6 by level 13)
 const birdGap = (L, g, fa, fb) => { const f = L >= 10 ? Math.max(.6, .75 - (L - 10) * .05) : 1; return [Math.max(fa, g[0] * f), Math.max(fb, g[1] * f)]; };
 const hzGap = (L, a, b, fa, fb) => { const hf = L >= 7 ? Math.max(.55, 1 - (L - 6) * .03) : 1; return [Math.max(fa, a * hf), Math.max(fb, b * hf)]; };
@@ -509,9 +509,9 @@ function cfgFor(L) {
   return {
     L, base, quota: Math.min(60, 14 + Math.floor(L * .8)),   // deliveries needed to clear: longer levels (14 at level 1, 60 max)
     rampMax: Math.max(6, (next - base) * .85),         // in-level ramp stays small so the level-up jump is small
-    inFlight: L < 3 ? 1 : L < 9 ? 2 : 3,
-    gap: Math.max(.5, 1.5 - L * .02),
-    droneSpeed: Math.min(420, 170 + L * 5),
+    inFlight: L < 2 ? 1 : L < 9 ? 2 : 3,
+    gap: L <= 2 ? .75 + L * .05 : Math.max(.5, 1.5 - L * .02),                          // levels 1-2: parcels follow each other a bit sooner
+    droneSpeed: L <= 2 ? 260 : Math.min(420, 170 + L * 5),
     pelican: L >= 4, snatch: L >= 4,
     cannon: L >= 4,                                              // player's water cannon (SPRAY button) unlocks with the pelican and seagulls
     pelGap: birdGap(L, L < 6 ? [14, 22] : [Math.max(4, 10 - (L - 6) * .12), Math.max(7, 16 - (L - 6) * .2)], 4.5, 7),   // seconds between pelican events

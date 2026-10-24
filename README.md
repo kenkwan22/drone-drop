@@ -54,7 +54,7 @@ Clear level 60 and the **Drone Champion** finale plays: fireworks (rockets that 
 
 Everything lives in `levelCfg()` and `CONFIG` at the top of `index.html`.
 
-- Levels 1-3: gentle. One to two parcels in flight, slow fall. Level 4 brings the pelican, seagulls and your water cannon.
+- Levels 1-3: gentle. Levels 1 and 2 start a little quicker (faster drops and drone) so they do not drag. One parcel at a time on level 1, two from level 2. Level 4 brings the pelican, seagulls and your water cannon.
 - Level 6 onward: it bites. Wind gusts, then mixed fall speeds (7), bombs (10), rapid double drops (18), a slippery deck (25) and flickering stealth parcels (35).
 - The drone never plans an impossible drop: it checks that the van can reach each parcel in time (`violation()`).
 - Delivery target per level: `14 + floor(level * 0.8)` (14 at level 1, 48 at most), so a level takes roughly a minute. Difficulty peaks around level 45-50, then eases off: level 55 onward plays about like level 30, and bosses after level 50 are milder and rarer (60). A heart drops about every 12 deliveries while you are down a life. Stars: 3 for no lives lost, 2 for one, 1 otherwise.
@@ -75,7 +75,7 @@ Six cosmetic vehicles, unlocked by total stars (see `VEHICLES` in `index.html`):
 
 ## Paywall
 
-Levels 1-8 are free. Levels 9-60 are the **World Tour**, a one-time purchase of about $15 (US$14.99, the closest store price point; `CONFIG.billing`).
+Levels 1-8 are free. Levels 9-60 are the **World Tour**, a one-time purchase of US$9.99 (`CONFIG.billing`).
 
 **The plan is the app stores.** The repo is wrapped with Capacitor (`android/`, `ios/`), and in the apps the purchase goes through Apple / Google in-app purchase via RevenueCat, which is the source of truth for the unlock (refunds re-lock, Restore Purchases works, the price shown is localised). Full steps, accounts and checklists are in [`docs/APP_STORE.md`](docs/APP_STORE.md).
 
