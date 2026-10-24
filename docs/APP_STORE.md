@@ -20,7 +20,7 @@ The repo is already wrapped with [Capacitor](https://capacitorjs.com): `android/
 
 ## 2. The app ID (a name you choose, not your email)
 
-Your **email** (your account email) is only what you sign in to Apple Developer, Google Play and RevenueCat with. The **app ID** is a different thing: a reverse-domain name that identifies the app, such as `com.kenkwan22.dronedrop`. It is not an email and nobody issues it to you: you invent it, and both stores just check that nobody else has already used it. You do not need to own a domain.
+Your **account email** is only what you sign in to Apple Developer, Google Play and RevenueCat with. The **app ID** is a different thing: a reverse-domain name that identifies the app, such as `com.kenkwan22.dronedrop`. It is not an email and nobody issues it to you: you invent it, and both stores just check that nobody else has already used it. You do not need to own a domain.
 
 `capacitor.config.json` is set to **`com.kenkwan22.dronedrop`** and the `android/` and `ios/` projects were generated with it. It becomes permanent once you create the store listings, so change it first if you want a different one: edit `appId`, delete the `android/` and `ios/` folders, and run `npm run build:web && npx cap add android && npx cap add ios` again. (Later the stores also show their own numbers for your app, such as Apple's numeric *Apple ID* in App Store Connect. Those are labels the store gives you, and you never type them into the project.)
 
