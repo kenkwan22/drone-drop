@@ -31,14 +31,18 @@ Each level cycles through five times of day (dusk, night, sunrise, day, golden h
 
 Everything lives in `levelCfg()` and `CONFIG` at the top of `index.html`.
 
-- Levels 1-5: gentle. One to two parcels in flight, slow fall, pelican from level 3 (fish decoy) and level 4 (snatch).
+- Levels 1-3: gentle. One to two parcels in flight, slow fall. Level 4 brings the pelican, seagulls and your water cannon.
 - Level 6 onward: it bites. Wind gusts, then mixed fall speeds (7), bombs (10), rapid double drops (18), a slippery deck (25) and flickering stealth parcels (35).
 - The drone never plans an impossible drop: it checks that the van can reach each parcel in time (`violation()`).
 - Delivery target per level: `8 + floor(level / 2)`. Stars: 3 for no lives lost, 2 for one, 1 otherwise.
 
 The pelican strikes every 14-22 s early on and every 4-16 s late (`pelGap`). From level 4 about half its events are parcel snatches (rising to 75%), and from level 15 a snatch can chain into a second parcel. Fish runs drop one fish, then two from level 8 and three from level 20. A parcel already over the van when the pelican reaches it is saved.
 
-Hazards, all tunable in `levelCfg()`: seagulls that knock parcels sideways (level 4), tide surges that shove the van along the deck (6), oil slicks that make the van skid (8), a rogue drone that drops junk crates you must not catch (12), lightning with a glowing warning zone that stuns the van for a second (14), and fog banks that hide parcels (22).
+Hazards, all tunable in `levelCfg()` and `hzGap()`: seagulls that knock parcels sideways or steal them (level 4), tide surges that shove the van (5), oil slicks that make it skid (6), a rogue drone that drops junk crates you must not catch (8), lightning with a glowing warning zone that stuns the van (9) and fog banks that hide parcels (12). From level 7 every hazard comes round faster.
+
+**Water cannon.** From level 4 a SPRAY button (Space, W or Up on a keyboard) fires a 3-shot tank that refills every 5 s. It auto-aims at the pelican, a seagull near a parcel, the rogue drone or the ape. During TURBO it fires automatically with no limit.
+
+**Boss ape.** On levels 20, 25, 30 and 35 a giant ape wades in from the sea, roars, leaps onto the drone and shakes it for a few seconds, so parcels drop at angles. Spraying him makes him let go sooner.
 
 Extras: golden parcels (+50), heart (+1 life), slow-mo and magnet bubbles.
 

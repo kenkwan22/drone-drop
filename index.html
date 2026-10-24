@@ -238,7 +238,7 @@ const CONFIG = {
   score:   { catch: 10, gold: 50, turboMult: 2, levelBonus: 50, perLife: 25 },
   combo:   { toTurbo: 5, turboSeconds: 8 },
   van:     { w: 67, scale: .7, speed: 340, turboSpeed: 1.65, catchRatio: .9, margin: 6, binH: 66 },
-  cannon:  { cooldown: .9, splashScore: 25 },
+  cannon:  { cooldown: .9, manualCooldown: .35, splashScore: 25, tank: 3, regenSeconds: 5 },
   parcel:  { w: 38, h: 30 },
   drone:   { y: 196 },
   pelican: { warn: 1, perchX: 372, perchY: 554, scale: .8, flySpeed: 560 },
@@ -337,6 +337,7 @@ const Sfx = {
       case 'warn': this.tone(1200, .09, 'square', .04); this.tone(1200, .09, 'square', .04, 0, .14); break;
       case 'squawk': this.tone(500, .2, 'sawtooth', .05, 250); break;
       case 'power': [660, 880, 1320].forEach((f, i) => this.tone(f, .09, 'triangle', .05, 0, i * .05)); break;
+      case 'roar': this.tone(130, .9, 'sawtooth', .07, -70); this.tone(90, 1, 'square', .05, -40, .05); break;
       case 'bomb': this.tone(120, .4, 'sawtooth', .08, -80); this.tone(60, .5, 'square', .06, 0, .02); break;
       case 'fish': this.tone(300, .25, 'triangle', .05, -120); break;
       case 'clear': [523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, .16, 'square', .05, 0, i * .09)); break;
@@ -389,6 +390,7 @@ function palette(info) {
 
 /* ---- difficulty: gentle to level 5, then it bites ---- */
 const fallBase = L => L <= 5 ? 120 + 15 * (L - 1) : Math.min(360, 180 + 7 * (L - 5));
+const hzGap = (L, a, b, fa, fb) => { const hf = L >= 7 ? Math.max(.55, 1 - (L - 6) * .03) : 1; return [Math.max(fa, a * hf), Math.max(fb, b * hf)]; };
 function levelCfg(L) {
   const base = fallBase(L), next = fallBase(Math.min(CONFIG.levels.total, L + 1));
   return {
@@ -397,20 +399,25 @@ function levelCfg(L) {
     inFlight: L < 3 ? 1 : L < 9 ? 2 : 3,
     gap: Math.max(.5, 1.5 - L * .02),
     droneSpeed: Math.min(420, 170 + L * 5),
-    pelican: L >= 3, snatch: L >= 4,
+    pelican: L >= 4, snatch: L >= 4,
+    cannon: L >= 4,                                              // player's water cannon (SPRAY button) unlocks with the pelican and seagulls
     pelGap: L < 6 ? [14, 22] : [Math.max(4, 10 - (L - 6) * .12), Math.max(7, 16 - (L - 6) * .2)],   // seconds between pelican events
     snatchP: L >= 4 ? Math.min(.75, .5 + (L - 4) * .01) : 0,   // chance an event is a snatch rather than fish
     fishVolley: 1 + (L >= 8 ? 1 : 0) + (L >= 20 ? 1 : 0),      // fish dropped per fish run
     chain: L >= 15 ? .4 : 0,                                    // chance a successful snatch goes for a second parcel
     // hazards: [min,max] seconds between spawns, or null when not yet introduced
-    gull: L >= 4 ? [Math.max(9, 14 - (L - 4) * .12), Math.max(14, 22 - (L - 4) * .18)] : null,   // seagulls knock parcels sideways
-    gullN: 1 + (L >= 25 ? 1 : 0),
-    oil: L >= 8 ? [Math.max(9, 14 - (L - 8) * .1), Math.max(13, 20 - (L - 8) * .15)] : null,     // oil slicks make the van skid
-    bolt: L >= 14 ? [Math.max(10, 16 - (L - 14) * .15), Math.max(15, 24 - (L - 14) * .2)] : null, // lightning stuns the van
-    tide: L >= 6 ? [Math.max(10, 18 - (L - 6) * .15), Math.max(16, 27 - (L - 6) * .22)] : null,     // tide surges shove the van sideways
-    rogue: L >= 12 ? [Math.max(12, 20 - (L - 12) * .15), Math.max(18, 29 - (L - 12) * .22)] : null,  // a rogue drone drops junk crates
+    // every hazard arrives early, and from level 7 they come round faster and faster (hf shrinks the gaps)
+    gull: L >= 4 ? hzGap(L, 14, 22, 5, 8) : null,        // seagulls knock parcels sideways or steal them
+    gullN: 1 + (L >= 20 ? 1 : 0),
+    gullSteal: L >= 4 ? Math.min(.55, .3 + (L - 4) * .01) : 0,   // chance a gull grabs the parcel instead of knocking it
+    tide: L >= 5 ? hzGap(L, 18, 27, 7, 11) : null,       // tide surges shove the van sideways
+    oil: L >= 6 ? hzGap(L, 14, 20, 7, 11) : null,        // oil slicks make the van skid
+    rogue: L >= 8 ? hzGap(L, 20, 29, 9, 14) : null,      // a rogue drone drops junk crates
     junkN: 2 + (L >= 30 ? 1 : 0),
-    fog: L >= 22 ? [Math.max(12, 20 - (L - 22) * .25), Math.max(18, 28 - (L - 22) * .3)] : null,  // fog banks hide parcels
+    bolt: L >= 9 ? hzGap(L, 16, 24, 8, 12) : null,       // lightning stuns the van
+    fog: L >= 12 ? hzGap(L, 20, 28, 10, 15) : null,      // fog banks hide parcels
+    // boss levels: a giant ape climbs out of the sea, leaps onto the drone and shakes it so parcels drop at angles
+    kong: [20, 25, 30, 35].includes(L) ? { gap: [11, 17], hold: 3.5 + (L - 20) / 5 * .5, dvx: 85 + (L - 20) * 3 } : null,
     wind: L >= 6 ? Math.min(60, 18 + (L - 6) * 1.2) : 0,
     spread: L >= 7 ? .10 + Math.min(.06, (L - 7) * .002) : 0,
     gold: L >= 2 ? .06 : 0,
@@ -421,10 +428,10 @@ function levelCfg(L) {
     flicker: L >= 35
   };
 }
-const INTRO = { 1: 'Slide the van under the parcels', 2: 'New: golden parcels are worth 50', 3: 'New: pelican fish decoys & power-ups',
-  4: 'New: pelican snatches & seagulls knock parcels', 6: 'Things get serious: wind gusts & tide surges', 7: 'Parcels now fall at different speeds',
-  8: 'New: oil slicks make the van skid', 10: 'New: bombs! Never catch the dark ones', 12: 'New: rogue drone drops junk. Do not catch it', 14: 'New: lightning. Stay out of the glow', 18: 'New: rapid-fire double drops',
-  22: 'New: fog banks hide the parcels', 25: 'New: slippery deck', 35: 'New: stealth parcels flicker' };
+const INTRO = { 1: 'Slide the van under the parcels', 2: 'New: golden parcels are worth 50', 3: 'New: power-up bubbles',
+  4: 'New: pelican, seagulls & your SPRAY cannon', 5: 'New: tide surges shove the van', 6: 'New: oil slicks & wind gusts', 7: 'Hazards now come faster. Parcels fall at mixed speeds',
+  8: 'New: rogue drone drops junk. Do not catch it', 9: 'New: lightning. Stay out of the glow', 10: 'New: bombs! Never catch the dark ones', 12: 'New: fog banks hide the parcels', 18: 'New: rapid-fire double drops',
+  20: 'BOSS: a giant ape shakes the drone!', 25: 'BOSS: the ape is back, and the deck is slippery', 30: 'BOSS: the ape is angrier', 35: 'BOSS: the ape, and stealth parcels' };
 
 /* ------------------------------ BACKGROUND ART -------------------------- */
 const HZ = CONFIG.scene.horizon;
@@ -866,7 +873,7 @@ const G = {
   parcels: [], fish: [], fx: [], pops: [], ids: 0, time: 0,
   drone: { x: 195, y: CONFIG.drone.y, tilt: 0, cool: 1, next: null },
   pel: { ph: 'perch', t: 10, ev: null, x: CONFIG.pelican.perchX, y: CONFIG.pelican.perchY, tgt: null, flap: 0, carry: false, fx: 0, fy: 0 },
-  hz: { gulls: [], oil: [], bolts: [], fog: [], tides: [], rogue: null, t: {} }, stunT: 0, jets: [], cannon: { a: -1.2, cool: 0 },
+  hz: { gulls: [], oil: [], bolts: [], fog: [], tides: [], rogue: null, kong: null, t: {} }, stunT: 0, jets: [], cannon: { a: -1.2, cool: 0 }, tank: 3,
   wind: 0, windT: 2, windTarget: 0, slowT: 0, magnetT: 0, banner: 0, bannerTitle: '', bannerSub: '', bannerTip: '',
   shake: 0, flash: 0, flashCol: '255,92,138', endT: 0, stats: { caught: 0, bestCombo: 0, turbo: 0 }, bonus: 0
 };
@@ -887,7 +894,8 @@ function resetField() {
     vanX: 195, vanV: 0, vanW: CONFIG.van.w, wind: 0, windT: 3, windTarget: 0, slowT: 0, magnetT: 0, shake: 0, flash: 0, bonus: 0,
     stats: { caught: 0, bestCombo: 0, turbo: 0 } });
   G.drone = { x: 195, y: CONFIG.drone.y, tilt: 0, cool: 1.2, next: null };
-  const hc = G.cfg; G.hz = { gulls: [], oil: [], bolts: [], fog: [], tides: [], rogue: null,
+  const hc = G.cfg; G.tank = CONFIG.cannon.tank; G.hz = { gulls: [], oil: [], bolts: [], fog: [], tides: [], rogue: null,
+    kong: hc.kong ? { ph: 'idle', t: rnd(hc.kong.gap[0], hc.kong.gap[1]) * .8, x: Math.random() < .5 ? 70 : 320, hold: 0, u: 0, px: 0, py: 0, sc: 1, breath: 0, flinch: 0 } : null,
     t: { gull: hc.gull ? rnd(4, 8) : 0, oil: hc.oil ? rnd(5, 9) : 0, bolt: hc.bolt ? rnd(6, 10) : 0, fog: hc.fog ? rnd(8, 13) : 0, tide: hc.tide ? rnd(6, 10) : 0, rogue: hc.rogue ? rnd(6, 11) : 0 } };
   G.stunT = 0; G.jets = []; G.cannon = { a: -1.2, cool: 0 };
   const g = G.cfg.pelGap; G.pel = { ph: 'perch', t: rnd(g[0], g[1]) * .6, ev: null, x: CONFIG.pelican.perchX, y: CONFIG.pelican.perchY, tgt: null, flap: 0, carry: false, fx: 0, fy: 0 };
@@ -937,12 +945,16 @@ function planDrop() {
   }
   return { x: best, kind, vy };
 }
+const apeHolding = () => { const k = G.hz.kong; return !!k && k.ph === 'cling'; };
 function release(n) {
-  const d = G.drone, big = n.kind === 'bomb' || n.kind === 'heart' || n.kind === 'slow' || n.kind === 'magnet';
-  G.parcels.push({ id: ++G.ids, kind: n.kind, x: d.x, y: d.y + 34, vy: n.vy, h: big ? 32 : CONFIG.parcel.h, passed: false, caught: false, dead: false, ct: 0, wk: 1, s: 1 });
+  const d = G.drone, big = n.kind === 'bomb' || n.kind === 'heart' || n.kind === 'slow' || n.kind === 'magnet', held = apeHolding();
+  // while the ape shakes the drone, parcels leave at an angle (constant sideways drift dvx)
+  G.parcels.push({ id: ++G.ids, kind: n.kind, x: clamp(d.x + (held ? d.jx : 0), 20, W - 20), y: d.y + (held ? d.jy : 0) + 34, vy: n.vy, h: big ? 32 : CONFIG.parcel.h, passed: false, caught: false, dead: false, ct: 0, wk: 1, s: 1,
+    dvx: held ? rnd(.6, 1) * G.cfg.kong.dvx * (Math.random() < .5 ? -1 : 1) : 0 });
 }
 function updateDrone(dt) {
   const d = G.drone, cfg = G.cfg; d.y = CONFIG.drone.y + Math.sin(G.time * 2.4) * 4;
+  if (apeHolding()) { d.jx = Math.sin(G.time * 38) * 11 + Math.sin(G.time * 23) * 7; d.jy = Math.sin(G.time * 31) * 8; } else { d.jx = 0; d.jy = 0; }
   const ok = G.banner <= .6 && (G.state === 'playing' || G.demo);
   if (d.next) {
     const dx = d.next.x - d.x, step = cfg.droneSpeed * dt;
@@ -953,6 +965,7 @@ function updateDrone(dt) {
     d.tilt = lerp(d.tilt, 0, Math.min(1, dt * 8)); d.cool -= dt;
     if (ok && d.cool <= 0 && live() < cfg.inFlight) d.next = planDrop();
   }
+  if (apeHolding()) d.tilt = Math.sin(G.time * 27) * .45;
 }
 function updateVan(dt) {
   const v = CONFIG.van, cfg = G.cfg, sp = v.speed * (G.turboT > 0 ? v.turboSpeed : 1); let desired = 0;
@@ -983,7 +996,7 @@ function updateItems(dt) {
     if (p.dead) continue;
     if (p.caught) { p.ct += dt; const k = Math.min(1, p.ct / .14); p.x = lerp(p.cx0, G.vanX, k); p.y = lerp(p.cy0, bin - 4, k); p.s = 1 - .4 * k; if (k >= 1) p.dead = true; continue; }
     p.y += p.vy * dt;
-    if (!p.passed) { p.vx = (p.vx || 0) * (1 - Math.min(1, dt * 1.6)); p.x = clamp(p.x + (G.wind * p.wk + p.vx) * dt, 16, W - 16); }
+    if (!p.passed) { p.vx = (p.vx || 0) * (1 - Math.min(1, dt * 1.6)); p.x = clamp(p.x + (G.wind * p.wk + p.vx + (p.dvx || 0)) * dt, 16, W - 16); }
     if (!p.passed && p.y + p.h / 2 >= bin) {
       p.passed = true;
       if (Math.abs(p.x - G.vanX) <= catchHalf()) { p.caught = true; p.ct = 0; p.cx0 = p.x; p.cy0 = p.y; onCatch(p); }
@@ -1025,27 +1038,99 @@ function startTurbo() {
   G.turboT = CONFIG.combo.turboSeconds; G.combo = 0; G.stats.turbo++; G.cannon.cool = .35; Sfx.play('big');
   pop('TURBO!', G.vanX, binLine() - 50, '#FFB36B', 30); sparks(G.vanX, binLine(), 24, ['#FF9A4A', WHITE, AMBER_L]);
 }
-/* Turbo extra: a water cannon on the cab roof sprays the pelican (and rogue drone), cancelling their move. */
+/* ---- water cannon: manual SPRAY from level 4 (3-shot tank that refills), automatic and unlimited during turbo ---- */
 const cannonPos = () => [G.vanX + G.vanDir * 22, CONFIG.scene.deckY - 50 * vanScale() - 4];
 function cannonTarget() {
-  const p = G.pel, r = G.hz.rogue;
+  const p = G.pel, r = G.hz.rogue, k = G.hz.kong;
   if (G.cfg.pelican && (p.ph === 'warn' || p.ph === 'snatch' || p.ph === 'out')) { const perched = p.ph === 'warn'; return { kind: 'pel', x: perched ? CONFIG.pelican.perchX : p.x, y: perched ? CONFIG.pelican.perchY - 28 : p.y - 16 }; }
-  if (r && r.ph === 'fly') return { kind: 'rogue', x: r.x, y: r.y };
-  return null;
+  if (k && k.ph === 'cling') return { kind: 'kong', x: k.px, y: k.py - 70, ref: k };
+  if (r && r.ph === 'fly') return { kind: 'rogue', x: r.x, y: r.y, ref: r };
+  let best = null, bd = 1e9;                                              // the seagull closest to a falling parcel
+  for (const g of G.hz.gulls) { if (g.flee || g.x < -10 || g.x > W + 10) continue; let d = 500; for (const q of G.parcels) if (!q.passed) d = Math.min(d, Math.hypot(q.x - g.x, q.y - g.y)); if (d < bd) { bd = d; best = g; } }
+  return best ? { kind: 'gull', x: best.x, y: best.y, ref: best } : null;
 }
-function updateCannon(dt) {
-  const cn = G.cannon; cn.cool -= dt; for (const j of G.jets) j.life -= dt; G.jets = G.jets.filter(j => j.life > 0);
-  if (G.turboT <= 0) return;
-  const [mx, my] = cannonPos(), tg = cannonTarget(), want = tg ? Math.atan2(tg.y - my, tg.x - mx) : (G.vanDir > 0 ? -1.2 : -Math.PI + 1.2);
-  const da = ((want - cn.a + 3 * Math.PI) % TAU) - Math.PI; cn.a += da * Math.min(1, dt * 12);
-  if (!tg || cn.cool > 0) return;
-  cn.cool = CONFIG.cannon.cooldown; G.jets.push({ x0: mx, y0: my, x1: tg.x, y1: tg.y, life: .28, max: .28 }); Sfx.play('power'); sparks(tg.x, tg.y, 12, ['#8FE8FF', WHITE]);
+function cannonFire(tg, cool) {
+  const [mx, my] = cannonPos(); G.cannon.cool = cool; G.jets.push({ x0: mx, y0: my, x1: tg.x, y1: tg.y, life: .28, max: .28 }); Sfx.play('power'); sparks(tg.x, tg.y, 12, ['#8FE8FF', WHITE]);
+  let pts = CONFIG.cannon.splashScore, label = 'SPLASH!';
   if (tg.kind === 'pel') {
     const p = G.pel; if (p.ph === 'warn') { p.ph = 'perch'; p.t = rnd(G.cfg.pelGap[0], G.cfg.pelGap[1]); } else { p.ph = 'back'; p.tgt = null; }
     sparks(tg.x, tg.y, 8, [WHITE, '#C9D3F0']);
-  } else G.hz.rogue.ph = 'flee';
-  G.score += CONFIG.cannon.splashScore; pop('SPLASH! +' + CONFIG.cannon.splashScore, tg.x, tg.y - 24, '#8FE8FF');
+  } else if (tg.kind === 'rogue') tg.ref.ph = 'flee';
+  else if (tg.kind === 'gull') { tg.ref.flee = true; pts = 10; sparks(tg.x, tg.y, 8, [WHITE, '#C9D3F0']); }
+  else if (tg.kind === 'kong') { tg.ref.hold -= 1.4; tg.ref.flinch = .4; label = 'ROAR!'; if (tg.ref.hold <= 0) apeLetGo(tg.ref); }
+  G.score += pts; pop(label + ' +' + pts, tg.x, tg.y - 24, '#8FE8FF');
 }
+function sprayNow() {
+  if (G.state !== 'playing' || !G.cfg.cannon || G.cannon.cool > 0) return;
+  if (G.tank < 1) { pop('TANK EMPTY', G.vanX, binLine() - 30, '#8FC8FF', 14); G.cannon.cool = .3; return; }
+  const tg = cannonTarget(); if (!tg) { pop('NO TARGET', G.vanX, binLine() - 30, '#B9C2F5', 14); G.cannon.cool = .25; return; }
+  G.tank -= 1; cannonFire(tg, CONFIG.cannon.manualCooldown);
+}
+function updateCannon(dt) {
+  const cn = G.cannon; cn.cool -= dt; for (const j of G.jets) j.life -= dt; G.jets = G.jets.filter(j => j.life > 0);
+  if (!G.cfg.cannon) return;
+  if (G.tank < CONFIG.cannon.tank) G.tank = Math.min(CONFIG.cannon.tank, G.tank + dt / CONFIG.cannon.regenSeconds);
+  const [mx, my] = cannonPos(), tg = cannonTarget(), want = tg ? Math.atan2(tg.y - my, tg.x - mx) : (G.vanDir > 0 ? -1.2 : -Math.PI + 1.2);
+  const da = ((want - cn.a + 3 * Math.PI) % TAU) - Math.PI; cn.a += da * Math.min(1, dt * 12);
+  if (G.turboT > 0 && tg && cn.cool <= 0) cannonFire(tg, CONFIG.cannon.cooldown);
+}
+
+/* ---- boss ape (levels 20, 25, 30, 35): wades in from the sea, leaps onto the drone and shakes it ---- */
+const APE_FEET = 540, APE_CLING = .8;
+function apeLetGo(k) { k.ph = 'fall'; k.vy = -140; k.vx = (k.px < W / 2 ? -1 : 1) * 70; Sfx.play('bomb'); }
+function updateKong(dt) {
+  const k = G.hz.kong; if (!k) return; k.breath += dt; k.flinch = Math.max(0, k.flinch - dt);
+  const d = G.drone, play = G.state === 'playing', gap = G.cfg.kong.gap;
+  switch (k.ph) {
+    case 'idle': k.px = k.x; k.py = APE_FEET; k.sc = 1; k.t -= dt; if (k.t <= 0 && play && G.banner <= .6) { k.ph = 'roar'; k.t = 1.2; Sfx.play('roar'); } break;
+    case 'roar': k.t -= dt; if (!REDUCED) G.shake = Math.max(G.shake, .1); if (k.t <= 0) { k.ph = 'leap'; k.u = 0; k.x0 = k.x; } break;
+    case 'leap': {
+      k.u = Math.min(1, k.u + dt / .95); const fy = d.y + 130 * APE_CLING;
+      k.px = lerp(k.x0, d.x, k.u); k.py = lerp(APE_FEET, fy, k.u) - 250 * Math.sin(Math.PI * k.u); k.sc = lerp(1, APE_CLING, k.u);
+      if (k.u >= 1) { k.ph = 'cling'; k.hold = G.cfg.kong.hold; G.shake = REDUCED ? 0 : .45; G.flash = .5; G.flashCol = '255,255,255'; Sfx.play('bomb'); pop('GRABBED!', d.x, d.y + 80, '#FF8FB0', 24); sparks(d.x, d.y, 20, [WHITE, AMBER_L, PINK]); }
+    } break;
+    case 'cling': k.px = d.x + d.jx * .6; k.py = d.y + 130 * APE_CLING + d.jy * .6; k.sc = APE_CLING; k.hold -= dt; if (k.hold <= 0) apeLetGo(k); break;
+    case 'fall':
+      k.vy += 950 * dt; k.px += k.vx * dt; k.py += k.vy * dt; k.sc = lerp(k.sc, 1, Math.min(1, dt * 3));
+      if (k.py > APE_FEET + 10) { splash(k.px, 506); splash(k.px - 26, 510); splash(k.px + 26, 510); sparks(k.px, 500, 18, ['#BFE6FF', WHITE]); Sfx.play('fish'); k.ph = 'idle'; k.t = rnd(gap[0], gap[1]); k.x = k.px < W / 2 ? rnd(250, 330) : rnd(60, 140); }
+      break;
+  }
+}
+function drawApe(c, t, k) {
+  const P = palOf(), fur = mix(P.near, '#1a1424', .5), skin = mix('#8A6F86', P.mid, .3), edge = 'rgba(244,241,255,.2)';
+  c.save(); c.beginPath(); c.rect(0, 0, W, 506); c.clip(); c.translate(k.px, k.py); c.scale(k.sc, k.sc); c.lineJoin = 'round'; c.lineCap = 'round';
+  const roar = k.ph === 'roar' || k.ph === 'leap', grab = k.ph === 'cling', idle = k.ph === 'idle';
+  const beat = idle ? Math.max(0, Math.sin(k.breath * 6)) : 0, side = Math.sin(k.breath * 3) > 0 ? 1 : -1, bob = idle ? Math.sin(k.breath * 2) * 3 : 0;
+  c.translate(0, bob);
+  const body = (draw) => { c.fillStyle = fur; c.strokeStyle = edge; c.lineWidth = 2; draw(); c.fill(); c.stroke(); };
+  body(() => rr(c, -42, -58, 32, 58, 12)); body(() => rr(c, 10, -58, 32, 58, 12));                          // legs
+  body(() => { c.beginPath(); c.ellipse(0, -112, 58, 66, 0, 0, TAU); });                                       // body
+  c.fillStyle = skin; c.beginPath(); c.ellipse(0, -108, 34, 42, 0, 0, TAU); c.fill();                        // chest
+  c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = 2; c.beginPath(); c.moveTo(0, -146); c.lineTo(0, -74); c.stroke();
+  body(() => { c.beginPath(); c.ellipse(0, -152, 70, 30, 0, 0, TAU); });                                       // shoulders
+  for (const s of [-1, 1]) {                                                                                   // arms
+    let fx, fy;
+    if (roar) { fx = s * 78; fy = -204 + Math.sin(t * 24 + s) * 5; } else if (grab) { fx = s * 84; fy = -140; }
+    else if (k.ph === 'fall') { fx = s * 84; fy = -190 + Math.sin(t * 20 + s) * 12; }
+    else { const on = s === side ? beat : 0; fx = lerp(s * 80, s * 22, on); fy = lerp(-62, -118, on); }
+    c.strokeStyle = fur; c.lineWidth = 30; c.beginPath(); c.moveTo(s * 60, -150); c.quadraticCurveTo(s * 92, (-150 + fy) / 2 + 10, fx, fy); c.stroke();
+    c.strokeStyle = edge; c.lineWidth = 2; c.beginPath(); c.moveTo(s * 60, -164); c.quadraticCurveTo(s * 104, (-164 + fy) / 2 + 6, fx + s * 4, fy - 14); c.stroke();
+    c.fillStyle = fur; c.beginPath(); c.arc(fx, fy, 17, 0, TAU); c.fill(); c.stroke();
+  }
+  body(() => { c.beginPath(); c.arc(0, -192 + (roar ? -4 : 0), 25, 0, TAU); });                                // head
+  body(() => { c.beginPath(); c.arc(-24, -194, 7, 0, TAU); }); body(() => { c.beginPath(); c.arc(24, -194, 7, 0, TAU); });   // ears
+  c.fillStyle = skin; c.beginPath(); c.ellipse(0, -186, 16, 15, 0, 0, TAU); c.fill();
+  c.fillStyle = fur; c.fillRect(-20, -204, 40, 9);                                                              // brow
+  const mad = k.flinch > 0 ? '#FFFFFF' : '#FFE27D'; c.fillStyle = mad; circ(c, -7, -197, 2.6); circ(c, 7, -197, 2.6); c.fillStyle = INK; circ(c, -7, -197, 1.2); circ(c, 7, -197, 1.2);
+  c.fillStyle = 'rgba(0,0,0,.55)'; circ(c, -3, -186, 1.5); circ(c, 3, -186, 1.5);
+  if (roar || k.flinch > 0) { c.fillStyle = '#4A0F25'; c.beginPath(); c.ellipse(0, -176, 10, roar ? 9 : 6, 0, 0, TAU); c.fill(); c.fillStyle = WHITE; c.fillRect(-7, -183, 3, 4); c.fillRect(4, -183, 3, 4); }
+  else { c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = 2; c.beginPath(); c.moveTo(-8, -177); c.quadraticCurveTo(0, -172, 8, -177); c.stroke(); }
+  if (k.flinch > 0) { c.globalAlpha = .35; c.fillStyle = '#BFE6FF'; c.beginPath(); c.ellipse(0, -120, 70, 100, 0, 0, TAU); c.fill(); }
+  c.restore();
+  if (idle || k.ph === 'roar') { c.save(); c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 2; c.beginPath(); c.ellipse(k.px, 506, 70 * k.sc, 7, 0, 0, TAU); c.stroke(); c.restore(); }
+  if (k.ph === 'roar') { const on = Math.sin(t * 20) > -.3; if (on) { c.save(); c.translate(k.px, k.py - 250); c.fillStyle = '#FF4D6D'; c.strokeStyle = INK; c.lineWidth = 3; circ(c, 0, 0, 17); c.stroke(); txt(c, '!', 0, 9, `700 26px ${FONT}`, WHITE, 'center'); c.restore(); } }
+}
+function drawKong(c, t) { const k = G.hz.kong; if (k) drawApe(c, t, k); }
 function drawCannon(c, t) {
   const [mx, my] = cannonPos(); c.save(); c.translate(mx, my); c.lineJoin = 'round';
   c.fillStyle = '#C9D3F0'; c.strokeStyle = INK; c.lineWidth = 2; rr(c, -7, -1, 14, 6, 2); c.fill(); c.stroke();
@@ -1114,11 +1199,17 @@ function updateHazards(dt) {
   tick('rogue', cfg.rogue, () => { if (!h.rogue) { const dir = Math.random() < .5 ? 1 : -1; h.rogue = { ph: 'warn', t: 1.1, dir, x: dir > 0 ? -34 : W + 34, y: 262, drops: cfg.junkN, dropT: .5 }; } });
   tick('fog', cfg.fog, () => { const dir = Math.random() < .5 ? 1 : -1; h.fog.push({ x: dir > 0 ? -100 : W + 100, y: rnd(270, 380), w: rnd(160, 230), vx: dir * rnd(25, 45) }); });
   for (const g of h.gulls) {
-    g.x += g.vx * dt; g.flap += dt * 11;
-    for (const p of G.parcels.concat(G.fish)) if (!p.passed && !p.caught && !g.hit.has(p.id) && Math.abs(p.x - g.x) < 24 && Math.abs(p.y - g.y) < 20) {
-      g.hit.add(p.id); p.vx = (p.vx || 0) + g.dir * 95; sparks(p.x, p.y, 6, [WHITE, '#C9D3F0']); }
+    g.flap += dt * 11;
+    if (g.flee) { g.y -= 190 * dt; g.x += g.dir * 70 * dt; continue; }               // sprayed: the gull flaps away upward
+    g.x += g.vx * dt;
+    for (const p of G.parcels.concat(G.fish)) if (!p.passed && !p.caught && !g.carry && !g.hit.has(p.id) && Math.abs(p.x - g.x) < 24 && Math.abs(p.y - g.y) < 20) {
+      g.hit.add(p.id);
+      if (catchable(p.kind) && Math.random() < cfg.gullSteal) {                       // steal: the parcel is gone and your combo breaks
+        p.dead = true; g.carry = true; G.combo = 0; G.streak = 0; pop('STOLEN', p.x, p.y - 22, '#FF8FB0'); sparks(p.x, p.y, 10, [WHITE, AMBER_L]); Sfx.play('squawk');
+      } else { p.vx = (p.vx || 0) + g.dir * 95; sparks(p.x, p.y, 6, [WHITE, '#C9D3F0']); }   // or knock it off course
+    }
   }
-  h.gulls = h.gulls.filter(g => g.x > -120 && g.x < W + 120);
+  h.gulls = h.gulls.filter(g => g.x > -120 && g.x < W + 120 && g.y > -40);
   for (const o of h.oil) o.life -= dt; h.oil = h.oil.filter(o => o.life > 0);
   for (const b of h.bolts) {
     b.age += dt; b.t -= dt;
@@ -1155,7 +1246,7 @@ function update(dt) {
   if (G.state === 'playing' || G.demo) {
     const ts = G.slowT > 0 ? CONFIG.powers.slowFactor : 1, sdt = dt * ts;
     if (G.banner > 0) G.banner -= dt;
-    updateVan(dt); updateWind(sdt); updateDrone(sdt); updateItems(sdt); updatePelican(sdt); updateHazards(sdt);
+    updateVan(dt); updateWind(sdt); updateDrone(sdt); updateItems(sdt); updatePelican(sdt); updateHazards(sdt); updateKong(sdt);
     updateCannon(dt);
     if (G.turboT > 0) G.turboT = Math.max(0, G.turboT - dt);
     G.slowT = Math.max(0, G.slowT - dt); G.magnetT = Math.max(0, G.magnetT - dt);
@@ -1169,7 +1260,7 @@ function update(dt) {
 const glass = (c, x, y, w, h, r = 14) => { rr(c, x, y, w, h, r); c.fillStyle = 'rgba(11,16,48,.78)'; c.fill(); c.strokeStyle = 'rgba(255,255,255,.16)'; c.lineWidth = 1.5; c.stroke(); };
 function txt(c, s, x, y, font, col, align = 'left', base = 'alphabetic') { c.font = font; c.fillStyle = col; c.textAlign = align; c.textBaseline = base; c.fillText(s, x, y); }
 function fitFont(c, s, w, size, weight, family) { let sz = size; c.font = `${weight} ${sz}px ${family}`; while (c.measureText(s).width > w && sz > 8) { sz -= .5; c.font = `${weight} ${sz}px ${family}`; } return `${weight} ${sz}px ${family}`; }
-const BTN = { y: 754, h: 68, lx: 20, rx: 205, w: 165 };
+const BTN = { y: 754, h: 68, lx: 20, rx: 232, w: 138, sx: 195, sy: 788, sr: 33 };   // left / right buttons and the round SPRAY button between them
 
 function drawBG(c, t) {
   if (G.bgFade < 1 && G.bgPrev) { c.drawImage(G.bgPrev, 0, 0, W, H); c.globalAlpha = G.bgFade; c.drawImage(G.bg, 0, 0, W, H); c.globalAlpha = 1; }
@@ -1204,12 +1295,12 @@ function drawVanNow(c, t) {
   c.save(); c.translate(G.vanX, CONFIG.scene.deckY); c.scale(sc, sc);
   drawVan(c, G.vanW / sc, dir, G.wheel, turbo ? '#FF9A4A' : G.magnetT > 0 ? '#A66BFF' : null, curVeh(), t);
   c.restore();
-  if (turbo) drawCannon(c, t);
+  if (G.cfg.cannon) drawCannon(c, t);
   if (G.magnetT > 0) { const r = catchHalf(); c.save(); c.strokeStyle = 'rgba(166,107,255,.8)'; c.lineWidth = 2; c.setLineDash([5, 5]); c.lineDashOffset = -t * 30;
     c.beginPath(); c.moveTo(G.vanX - r, binLine()); c.lineTo(G.vanX + r, binLine()); c.stroke(); c.restore(); }
 }
 function drawEntity(c, p, t) {
-  c.save(); c.translate(p.x, p.y); const sc = p.s; c.scale(sc, sc); c.rotate(Math.sin(t * 3 + p.id) * .12);
+  c.save(); c.translate(p.x, p.y); const sc = p.s; c.scale(sc, sc); c.rotate(Math.sin(t * 3 + p.id) * .12 + (p.dvx ? Math.atan2(p.dvx, p.vy) * .8 : 0));
   if (G.cfg.flicker && !p.passed && p.y > 330) c.globalAlpha = .28 + .72 * Math.abs(Math.sin(t * 7 + p.id));
   if (!p.passed && G.hz.fog.length && inFog(p.x, p.y)) c.globalAlpha *= .18;
   drawItem(c, p.kind, t); c.restore();
@@ -1256,6 +1347,14 @@ function drawHUD(c, t) {
     rr(c, x, BTN.y, BTN.w, BTN.h, 22); c.fillStyle = on ? 'rgba(61,240,224,.28)' : 'rgba(11,16,48,.72)'; c.fill(); c.strokeStyle = on ? CYAN : 'rgba(255,255,255,.18)'; c.lineWidth = 1.8; c.stroke();
     const cx = x + BTN.w / 2, cy = BTN.y + BTN.h / 2; c.fillStyle = on ? CYAN : WHITE; poly(c, [cx - dir * 14, cy - 15, cx + dir * 14, cy, cx - dir * 14, cy + 15]);
   }
+  if (G.cfg.cannon) {                                                    // SPRAY button: ring segments show the three tank shots
+    const ready = G.tank >= 1 && G.cannon.cool <= 0, hasT = !!cannonTarget();
+    circ(c, BTN.sx, BTN.sy, BTN.sr, ready && hasT ? 'rgba(61,184,232,.35)' : 'rgba(11,16,48,.78)'); c.strokeStyle = ready && hasT ? '#8FE8FF' : 'rgba(255,255,255,.18)'; c.lineWidth = 1.8; c.stroke();
+    for (let i = 0; i < 3; i++) { const a0 = -Math.PI / 2 + i * TAU / 3 + .14, a1 = a0 + TAU / 3 - .28, f = clamp(G.tank - i, 0, 1);
+      c.lineWidth = 4; c.lineCap = 'round'; c.strokeStyle = 'rgba(255,255,255,.12)'; c.beginPath(); c.arc(BTN.sx, BTN.sy, BTN.sr - 6, a0, a1); c.stroke();
+      if (f > 0) { c.strokeStyle = f >= 1 ? '#8FE8FF' : 'rgba(143,232,255,.5)'; c.beginPath(); c.arc(BTN.sx, BTN.sy, BTN.sr - 6, a0, a0 + (a1 - a0) * f); c.stroke(); } }
+    c.fillStyle = ready ? WHITE : 'rgba(255,255,255,.5)'; c.beginPath(); c.moveTo(BTN.sx, BTN.sy - 12); c.quadraticCurveTo(BTN.sx + 11, BTN.sy + 2, BTN.sx, BTN.sy + 11); c.quadraticCurveTo(BTN.sx - 11, BTN.sy + 2, BTN.sx, BTN.sy - 12); c.fill();
+  }
   if (G.banner > 0) {
     const a = clamp(Math.min(G.banner, CONFIG.banner - G.banner) * 3, 0, 1); c.save(); c.globalAlpha = a; const y = 320 + (1 - a) * 12;
     txt(c, G.bannerTitle, 195, y, `700 52px ${FONT}`, WHITE, 'center'); txt(c, G.bannerSub, 195, y + 34, `700 17px ${FONT}`, AMBER_L, 'center');
@@ -1268,7 +1367,8 @@ function drawGull(c, g) {
   const wings = () => { c.beginPath(); c.moveTo(-1, 0); c.quadraticCurveTo(-10, -10 - f, -23, -3 + f * .5); c.moveTo(1, 0); c.quadraticCurveTo(10, -10 - f, 23, -3 + f * .5); c.stroke(); };
   c.strokeStyle = INK; c.lineWidth = 6; wings(); c.strokeStyle = WHITE; c.lineWidth = 3; wings();
   c.fillStyle = WHITE; c.strokeStyle = INK; c.lineWidth = 2; c.beginPath(); c.ellipse(0, 1, 9, 5, 0, 0, TAU); c.fill(); c.stroke(); circ(c, 8, -1, 3.6, WHITE); c.stroke();
-  c.fillStyle = AMBER; poly(c, [11, -2, 17, 0, 11, 1]); c.fillStyle = INK; circ(c, 9, -2, .9); c.restore();
+  c.fillStyle = AMBER; poly(c, [11, -2, 17, 0, 11, 1]); c.fillStyle = INK; circ(c, 9, -2, .9);
+  if (g.carry) { c.save(); c.translate(0, 13); c.scale(.42, .42); drawItem(c, 'box', 0); c.restore(); } c.restore();
 }
 function drawHazardsLow(c, t) {
   const S = CONFIG.scene, h = G.hz;
@@ -1319,13 +1419,13 @@ function render(t) {
   const c = ctx; c.setTransform(view.k, 0, 0, view.k, 0, 0); c.clearRect(0, 0, W, H);
   if (!G.bg) return;
   c.save(); if (G.shake > 0) c.translate(rnd(-1, 1) * G.shake * 14, rnd(-1, 1) * G.shake * 14);
-  drawBG(c, t); drawPelicanNow(c, t);
+  drawBG(c, t); drawKong(c, t); drawPelicanNow(c, t);
   for (const p of G.parcels) if (p.passed && !p.caught) drawEntity(c, p, t);
   for (const p of G.fish) if (p.passed && !p.caught) drawEntity(c, p, t);
   drawDeck(c, t); drawHazardsLow(c, t); drawVanNow(c, t);
   for (const p of G.parcels) if (!p.passed || p.caught) drawEntity(c, p, t);
   for (const p of G.fish) if (!p.passed || p.caught) drawEntity(c, p, t);
-  const d = G.drone; c.save(); c.translate(d.x, d.y); drawDrone(c, t, d.tilt); c.restore();
+  const d = G.drone; c.save(); c.translate(d.x + (d.jx || 0), d.y + (d.jy || 0)); drawDrone(c, t, d.tilt); c.restore();
   if (Math.abs(G.wind) > 12 && G.state === 'playing') { c.strokeStyle = 'rgba(255,255,255,.16)'; c.lineWidth = 1.5; for (let i = 0; i < 8; i++) { const y = 230 + i * 62, x = ((t * G.wind * 2.2 + i * 97) % (W + 120) + W + 120) % (W + 120) - 60;
     c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.sign(G.wind) * 40, y); c.stroke(); } }
   drawHazardsHigh(c, t); drawFx(c); c.restore();
@@ -1368,8 +1468,8 @@ function buildHow() {
   const rows = [['van', '<b>Slide the van</b> with the buttons, arrow keys or A / D. You can drag, too.'],
     ['box', '<b>Catch parcels</b> in the roof bin. Miss one and you lose a life. You get three.'],
     ['big', '<b>5 catches in a row</b> fires up <b>TURBO</b> for 8 seconds: the van races along, a water cannon blasts the pelican, and every catch scores double.'],
-    ['hazard', '<b>Hazards</b> from level 4: seagulls knock parcels off course, tide surges shove the van, oil makes you skid, a rogue drone drops junk crates (never catch those), lightning zaps the van and fog hides parcels.'],
-    ['pelican', 'The pelican shows a <b>!</b>, then snatches a parcel or drops a <b>decoy fish</b>. Do not catch the fish: it breaks your combo.'],
+    ['hazard', '<b>Hazards</b> arrive early and come faster from level 7: tide surges shove the van, oil makes you skid, a rogue drone drops junk crates (never catch those), lightning zaps the van and fog hides parcels. On <b>boss levels 20, 25, 30 and 35</b> a giant ape leaps onto the drone and shakes it so parcels drop at angles. Spray him to make him let go.'],
+    ['pelican', 'From level 4 the pelican shows a <b>!</b>, then snatches a parcel or drops a <b>decoy fish</b>. Seagulls knock parcels sideways or steal them. Tap <b>SPRAY</b> (or Space) to blast them with your water cannon: 3 shots, refilling over time.'],
     ['gold', '<b>Golden parcels</b> score 50. <b>Bombs</b> cost a life, so let them fall into the sea.'],
     ['power', '<b>Bubbles</b> help you: heart (+1 life), clock (slow motion) and magnet (wider catch).'],
     ['world', 'Hit each level\'s delivery target to travel on. <b>50 levels across 10 cities</b>, and levels 1 to 8 are free.']];
@@ -1451,6 +1551,7 @@ function roleAt(x, y) { if (y >= BTN.y - 6) return x < W / 2 ? 'L' : 'R'; return
 cv.addEventListener('pointerdown', e => {
   if (G.state !== 'playing') return; e.preventDefault(); Sfx.init();
   const [x, y] = sceneXY(e); if (Math.hypot(x - 195, y - 44) <= 30) { togglePause(); return; }
+  if (G.cfg.cannon && Math.hypot(x - BTN.sx, y - BTN.sy) <= BTN.sr + 8) { sprayNow(); return; }
   if (y < 150) return;
   try { cv.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
   inp.ptrs.set(e.pointerId, { role: roleAt(x, y), x }); syncInput();
@@ -1461,6 +1562,7 @@ addEventListener('keydown', e => {
   const k = e.key;
   if (k === 'ArrowLeft' || k === 'a' || k === 'A') { inp.keyL = true; syncInput(); e.preventDefault(); }
   else if (k === 'ArrowRight' || k === 'd' || k === 'D') { inp.keyR = true; syncInput(); e.preventDefault(); }
+  else if ((k === ' ' || k === 'ArrowUp' || k === 'w' || k === 'W' || k === 's' || k === 'S') && G.state === 'playing') { sprayNow(); e.preventDefault(); }
   else if ((k === 'Escape' || k === 'p' || k === 'P') && !e.repeat) { if (G.state === 'playing' || G.state === 'paused') togglePause(); }
   else if ((k === 'Enter' || k === ' ') && G.state === 'title' && G.menu === 'title' && !e.repeat && document.activeElement === document.body) { e.preventDefault(); act('play'); }
 });
@@ -1491,7 +1593,7 @@ function boot() {
   buildHow(); refreshTitle(); startDemo(); show('title');
   if (document.fonts && document.fonts.load) { document.fonts.load(`700 24px "Space Mono"`); document.fonts.load(`700 20px "Space Grotesk"`); }
   requestAnimationFrame(frame);
-  if (Billing.isDev) window.__dd = { G, CONFIG, Save, Billing, buildGarage, VEHICLES, startLevel, levelCfg, levelInfo, buildBG, WORLDS, act, update, show, render, inp, syncInput,
+  if (Billing.isDev) window.__dd = { G, CONFIG, Save, Billing, buildGarage, VEHICLES, sprayNow, startLevel, levelCfg, levelInfo, buildBG, WORLDS, act, update, show, render, inp, syncInput,
     step(sec) { for (let i = 0; i < sec * 60; i++) update(1 / 60); render(G.time); } };
 }
 boot();
