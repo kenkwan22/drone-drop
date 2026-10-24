@@ -268,7 +268,7 @@ const CONFIG = {
   banner:  2.4,
   billing: {
     productId: 'drone-drop-world-tour',
-    priceUSD: 9.99,   // the World Tour price; in the apps the real localised price comes from the store
+    priceAUD: 9.99,   // the World Tour price in Australian dollars; in the apps the real localised price comes from the store
     revenueCat: { iosKey: '', androidKey: '', entitlement: 'world_tour' },   // public SDK keys from the RevenueCat dashboard (see docs/APP_STORE.md)
     // Production purchases need a server that confirms payment (see README):
     checkoutUrl: '',   // e.g. a Stripe Payment Link
@@ -319,7 +319,7 @@ const Billing = {
   isDev: ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname) || /^(192\.168|10|172\.(1[6-9]|2\d|3[01]))(\.\d{1,3}){2,3}$/.test(location.hostname),   // this computer or a home-network IP only, never a real domain name
   rc: null, pkg: null, price: '',
   native() { return !!(window.Capacitor && typeof Capacitor.isNativePlatform === 'function' && Capacitor.isNativePlatform()); },
-  priceLabel() { return this.price || '$' + CONFIG.billing.priceUSD; },
+  priceLabel() { return this.price || 'A$' + CONFIG.billing.priceAUD; },
   unlocked() { return !!Save.d.unlocked; },
   grant() { Save.d.unlocked = true; Save.flush(); },
   async init() {                                                         // native only: connect to the store, learn the localised price, sync the entitlement
