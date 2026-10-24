@@ -1134,10 +1134,12 @@ function release(n) {
 }
 function updateDrone(dt) {
   const d = G.drone, cfg = G.cfg; d.y = CONFIG.drone.y + Math.sin(G.time * 2.4) * 4;
-  if (apeHolding()) {                                                      // the swinging ape drags the drone side to side
-    const k = G.hz.kong, nj = Math.sin(k.th) * 50 + Math.sin(G.time * 38) * 3;
-    d.jvx = (nj - (d.pjx || 0)) / Math.max(dt, .001); d.jx = nj; d.pjx = nj; d.jy = Math.abs(Math.sin(k.th)) * 10 + Math.sin(G.time * 31) * 2.5;
-  } else { d.jx = 0; d.jy = 0; d.jvx = 0; d.pjx = 0; }
+  {                                                                        // the swinging ape drags the drone side to side; the sway eases in on the grab and out on the release
+    const k = G.hz.kong, hold = apeHolding(), pj = d.jx || 0;
+    if (hold) { k.grip = smooth(k.grip || 0, 1, dt, 5); d.jx = Math.sin(k.th) * 50 * k.grip + Math.sin(G.time * 23) * 1.2 * k.grip; d.jy = (Math.abs(Math.sin(k.th)) * 10 + Math.sin(G.time * 31) * 2) * k.grip; }
+    else { if (k) k.grip = 0; d.jx = smooth(pj, 0, dt, 7); d.jy = smooth(d.jy || 0, 0, dt, 7); }
+    d.jvx = (d.jx - pj) / Math.max(dt, .001);
+  }
   const ok = G.banner <= .6 && (G.state === 'playing' || G.demo);
   if (d.next) {
     const dx = d.next.x - d.x, step = cfg.droneSpeed * dt;
@@ -1148,7 +1150,7 @@ function updateDrone(dt) {
     d.tilt = lerp(d.tilt, 0, Math.min(1, dt * 8)); d.cool -= dt;
     if (ok && d.cool <= 0 && live() < cfg.inFlight) d.next = planDrop();
   }
-  if (apeHolding()) d.tilt = -G.hz.kong.th * .45 + Math.sin(G.time * 27) * .05;
+  if (apeHolding()) d.tilt = lerp(d.tilt, -G.hz.kong.th * .45 * G.hz.kong.grip + Math.sin(G.time * 27) * .04, Math.min(1, dt * 10));
 }
 function updateVan(dt) {
   const v = CONFIG.van, cfg = G.cfg, sp = v.speed * (G.turboT > 0 ? v.turboSpeed : 1); let desired = 0;
@@ -1261,23 +1263,37 @@ function updateCannon(dt) {
 /* ---- boss ape (levels 20, 25, 30, 35): wades in from the sea, leaps onto the drone and shakes it ---- */
 const APE_FEET = 540, APE_CLING = .55;
 function apeLetGo(k) { k.ph = 'fall'; k.vy = -140; k.vx = (k.px < W / 2 ? -1 : 1) * 70; Sfx.play('bomb'); }
+const smooth = (a, b, dt, rate) => a + (b - a) * (1 - Math.exp(-rate * dt));
+function apeArmTarget(k, s) {                                                 // [elbowX, elbowY, fistX, fistY] for each pose; the drawn arms ease toward these
+  if (k.ph === 'cling') return [s * 78, -200, s * 18, -246];
+  if (k.ph === 'roar' || k.ph === 'leap') return [s * 96, -196, s * 86, -240 + Math.sin(k.breath * 24 + s) * 4];
+  if (k.ph === 'fall') return [s * 98, -170, s * 96, -216 + Math.sin(k.breath * 20 + s) * 12];
+  const side = Math.sin(k.breath * 3) > 0 ? 1 : -1, on = s === side ? Math.max(0, Math.sin(k.breath * 6)) : 0;
+  return [lerp(s * 96, s * 94, on), lerp(-110, -86, on), lerp(s * 86, s * 22, on), lerp(-58, -116, on)];
+}
 function updateKong(dt) {
   const k = G.hz.kong; if (!k) return; k.breath += dt; k.flinch = Math.max(0, k.flinch - dt);
   const d = G.drone, play = G.state === 'playing', gap = G.cfg.kong.gap;
+  if (!k.A) { k.A = { '-1': apeArmTarget(k, -1).slice(), '1': apeArmTarget(k, 1).slice() }; k.mouth = 0; k.hup = 0; k.lean = 0; k.push = 0; }
+  for (const s of [-1, 1]) { const T = apeArmTarget(k, s), a = k.A[s]; for (let i = 0; i < 4; i++) a[i] = smooth(a[i], T[i], dt, k.ph === 'idle' ? 14 : 9); }      // arms, mouth, head and lean all ease between poses
+  k.mouth = smooth(k.mouth, (k.ph === 'roar' || k.ph === 'leap' || k.ph === 'fall' || k.flinch > 0) ? 1 : 0, dt, 12);
+  k.hup = smooth(k.hup, k.ph === 'roar' ? 1 : 0, dt, 8);
+  k.lean = smooth(k.lean, k.ph === 'roar' ? -.1 : k.ph === 'leap' ? .2 : 0, dt, 7);
   switch (k.ph) {
     case 'idle': k.px = k.x; k.py = APE_FEET; k.sc = 1; k.t -= dt; if (k.t <= 0 && play && G.banner <= .6) { k.ph = 'roar'; k.t = 1.2; Sfx.play('roar'); } break;
     case 'roar': k.t -= dt; if (!REDUCED) G.shake = Math.max(G.shake, .1); if (k.t <= 0) { k.ph = 'leap'; k.u = 0; k.x0 = k.x; } break;
     case 'leap': {
-      k.u = Math.min(1, k.u + dt / .95); const fy = d.y + 34 + 240 * APE_CLING;                       // feet end up one body-length below the drone's skid
-      k.px = lerp(k.x0, d.x, k.u); k.py = lerp(APE_FEET, fy, k.u) - 250 * Math.sin(Math.PI * k.u); k.sc = lerp(1, APE_CLING, k.u);
+      k.u = Math.min(1, k.u + dt / .95); const e = k.u * k.u * (3 - 2 * k.u), fy = d.y + 34 + 240 * APE_CLING;      // eased arc; feet end one body-length below the drone's skid
+      k.px = lerp(k.x0, d.x, e); k.py = lerp(APE_FEET, fy, e) - 250 * Math.sin(Math.PI * k.u); k.sc = lerp(1, APE_CLING, e);
       if (k.u >= 1) {
-        k.ph = 'cling'; k.hold = G.cfg.kong.hold; k.th = -Math.sign(d.x - k.x0 || 1) * .8; k.om = 0; k.kick = .3; k.gx = d.x; k.gy = d.y + 34;     // he swings in with the leap's momentum
+        k.ph = 'cling'; k.hold = G.cfg.kong.hold; k.th = 0; k.om = -Math.sign(d.x - k.x0 || 1) * 2.6; k.grip = 0; k.kick = .6; k.push = 0; k.gx = d.x; k.gy = d.y + 34;     // he swings in with the leap's momentum
         G.shake = REDUCED ? 0 : .45; G.flash = .5; G.flashCol = '255,255,255'; Sfx.play('bomb'); pop('HANGING ON!', d.x, d.y + 90, '#FF8FB0', 24); sparks(d.x, d.y + 30, 20, [WHITE, AMBER_L, PINK]);
       }
     } break;
-    case 'cling': {                                                                                   // hangs from the drone's skid and swings like a pendulum, with random lurches
-      k.kick -= dt; k.om += (-9 * Math.sin(k.th) - .35 * k.om) * dt;
-      if (k.kick <= 0) { k.om += rnd(-3.8, 3.8); k.kick = rnd(.5, 1.1); }
+    case 'cling': {                                                                                   // hangs from the drone's skid and swings like a pendulum; lurches are spread over a moment so it stays fluid
+      k.kick -= dt; if (k.kick <= 0) { k.push += rnd(-3.8, 3.8); k.kick = rnd(.5, 1.1); }
+      const add = k.push * Math.min(1, dt * 9); k.om += add; k.push -= add;
+      k.om += (-9 * Math.sin(k.th) - .35 * k.om) * dt;
       k.th = clamp(k.th + k.om * dt, -1.05, 1.05); k.sc = APE_CLING; k.gx = d.x + d.jx; k.gy = d.y + 34 + d.jy;
       k.px = k.gx - Math.sin(k.th) * 240 * k.sc; k.py = k.gy + Math.cos(k.th) * 240 * k.sc;
       k.hold -= dt; if (k.hold <= 0) apeLetGo(k);
@@ -1288,61 +1304,70 @@ function updateKong(dt) {
       break;
   }
 }
+/* tapered, bulging limb as one smooth closed shape along a curve through shoulder, elbow and hand */
+function limbPath(x0, y0, ex, ey, x1, y1, w0, w1, bulge) {
+  const cx = 2 * ex - (x0 + x1) / 2, cy = 2 * ey - (y0 + y1) / 2, N = 20, L = [], R = [];
+  for (let i = 0; i <= N; i++) {
+    const t = i / N, u = 1 - t, px = u * u * x0 + 2 * u * t * cx + t * t * x1, py = u * u * y0 + 2 * u * t * cy + t * t * y1;
+    const tx = 2 * u * (cx - x0) + 2 * t * (x1 - cx), ty = 2 * u * (cy - y0) + 2 * t * (y1 - cy), l = Math.hypot(tx, ty) || 1, w = (lerp(w0, w1, t) + bulge * Math.sin(Math.PI * t)) / 2;
+    L.push([px - ty / l * w, py + tx / l * w]); R.push([px + ty / l * w, py - tx / l * w]);
+  }
+  const p = new Path2D(); p.moveTo(L[0][0], L[0][1]); for (let i = 1; i <= N; i++) p.lineTo(L[i][0], L[i][1]); for (let i = N; i >= 0; i--) p.lineTo(R[i][0], R[i][1]); p.closePath(); return p;
+}
 function drawApe(c, t, k) {
-  const P = palOf(), fur = mix('#5A4668', P.near, .3), furD = mix('#2E2240', P.near, .4), furL = mix('#9A82AE', P.mid, .25), skin = mix('#C99C94', P.mid, .15), skinL = mix('#E0BDB2', P.mid, .1);
-  const hang = k.ph === 'cling', roar = k.ph === 'roar' || k.ph === 'leap', idle = k.ph === 'idle', fall = k.ph === 'fall';
+  const P = palOf(), fur = mix('#5A4668', P.near, .3), furD = mix('#2E2240', P.near, .4), furL = mix('#A58BB8', P.mid, .25), skin = mix('#C99C94', P.mid, .15), skinL = mix('#E6C4B8', P.mid, .1);
+  const hang = k.ph === 'cling', idle = k.ph === 'idle', fall = k.ph === 'fall', A = k.A || { '-1': apeArmTarget(k, -1), '1': apeArmTarget(k, 1) }, mouth = k.mouth || 0, hup = k.hup || 0, lean = k.lean || 0;
   c.save(); c.beginPath(); c.rect(0, 0, W, 506); c.clip(); c.lineJoin = 'round'; c.lineCap = 'round';
   if (hang) { c.translate(k.gx, k.gy); c.rotate(k.th); c.scale(k.sc, k.sc); c.translate(0, 240); } else { c.translate(k.px, k.py); c.scale(k.sc, k.sc); }
-  const beat = idle ? Math.max(0, Math.sin(k.breath * 6)) : 0, side = Math.sin(k.breath * 3) > 0 ? 1 : -1;
   if (idle) c.translate(0, Math.sin(k.breath * 2) * 3);
+  c.translate(0, -70); c.rotate(lean); c.translate(0, 70);                                                       // lean back to roar, forward to leap
   const g = c.createLinearGradient(-70, -240, 70, 0); g.addColorStop(0, furL); g.addColorStop(.45, fur); g.addColorStop(1, furD);
-  const blob = (fn, fill) => { c.beginPath(); fn(); c.fillStyle = fill || g; c.fill(); c.lineWidth = 3; c.strokeStyle = INK; c.stroke(); };
-  const limb = (x0, y0, x1, y1, w) => { c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.strokeStyle = INK; c.lineWidth = w + 6; c.stroke(); c.strokeStyle = g; c.lineWidth = w; c.stroke(); };
-  const spikes = (x, y, n, w, h) => { for (let i = 0; i < n; i++) blob(() => { const sx = x + (i - (n - 1) / 2) * w; c.moveTo(sx - w * .7, y); c.lineTo(sx, y - h - ((i * 7) % 4)); c.lineTo(sx + w * .7, y); c.closePath(); }, fur); };
-  for (const s of [-1, 1]) {                                                                                   // legs
-    if (hang) { const a = Math.sin(t * 6 + s * 1.3 + k.th * 2) * .38; limb(s * 22, -66, s * 22 + Math.sin(a) * 52, -66 + Math.cos(a) * 58, 28); blob(() => c.ellipse(s * 22 + Math.sin(a) * 56, -66 + Math.cos(a) * 62, 15, 9, 0, 0, TAU)); }
-    else limb(s * 26, -66, s * 28, -8, 32);
+  const shade = path => { c.save(); c.clip(path);                                                                // soft light from upper left, shadow lower right
+    let r = c.createRadialGradient(-30, -150, 4, -30, -150, 120); r.addColorStop(0, 'rgba(255,255,255,.2)'); r.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = r; c.fillRect(-120, -260, 240, 280);
+    r = c.createRadialGradient(44, -50, 4, 44, -50, 120); r.addColorStop(0, 'rgba(10,0,30,.34)'); r.addColorStop(1, 'rgba(10,0,30,0)'); c.fillStyle = r; c.fillRect(-120, -260, 240, 280);
+    c.strokeStyle = 'rgba(255,255,255,.2)'; c.lineWidth = 7; c.stroke(path); c.restore(); };                      // inner rim light
+  const solid = (path, fill) => { c.fillStyle = fill || g; c.fill(path); shade(path); c.lineWidth = 3; c.strokeStyle = INK; c.stroke(path); };
+  for (const s of [-1, 1]) {                                                                                     // legs
+    if (hang) { const a = Math.sin(t * 5 + s * 1.3 + k.th * 2) * .34, kx = s * 22 + Math.sin(a) * 26, fx = s * 22 + Math.sin(a) * 56; solid(limbPath(s * 20, -70, kx, -40, fx, -70 + Math.cos(a) * 62, 36, 28, 4)); const f = new Path2D(); f.ellipse(fx, -70 + Math.cos(a) * 64, 16, 9, 0, 0, TAU); solid(f); }
+    else solid(limbPath(s * 24, -70, s * 30, -36, s * 28, -4, 38, 30, 4));
   }
-  blob(() => c.ellipse(0, -112, 62, 70, 0, 0, TAU));                                                           // barrel body
-  c.save(); c.beginPath(); c.ellipse(0, -112, 62, 70, 0, 0, TAU); c.clip(); c.strokeStyle = 'rgba(0,0,0,.2)'; c.lineWidth = 1.4;                  // fur strokes
-  for (let i = 0; i < 34; i++) { const x = ((i * 37) % 100 - 50) * 1.15, y = -70 - ((i * 53) % 100) * .9; c.beginPath(); c.moveTo(x, y); c.lineTo(x + 3, y + 8); c.stroke(); } c.restore();
-  const cg = c.createLinearGradient(0, -150, 0, -70); cg.addColorStop(0, skinL); cg.addColorStop(1, skin);
-  blob(() => c.ellipse(0, -118, 38, 46, 0, 0, TAU), cg); c.strokeStyle = 'rgba(80,30,40,.55)'; c.lineWidth = 2; c.beginPath(); c.moveTo(0, -158); c.lineTo(0, -92);      // chest plate
-  c.moveTo(-26, -118); c.quadraticCurveTo(-12, -104, 0, -112); c.moveTo(26, -118); c.quadraticCurveTo(12, -104, 0, -112); c.stroke();
-  blob(() => c.ellipse(0, -160, 76, 30, 0, 0, TAU)); spikes(0, -174, 7, 20, 14);                                // shoulders with fur tufts
-  for (const s of [-1, 1]) {                                                                                   // arms
-    let ex, ey, fx, fy;
-    if (hang) { ex = s * 78; ey = -200; fx = s * 18; fy = -246; }
-    else if (roar) { ex = s * 96; ey = -196; fx = s * 86; fy = -238 + Math.sin(t * 24 + s) * 5; }
-    else if (fall) { ex = s * 98; ey = -170; fx = s * 96; fy = -216 + Math.sin(t * 20 + s) * 14; }
-    else { const on = s === side ? beat : 0; ex = lerp(s * 96, s * 86, on); ey = lerp(-110, -128, on); fx = lerp(s * 86, s * 20, on); fy = lerp(-58, -124, on); }
-    limb(s * 62, -154, ex, ey, 34); limb(ex, ey, fx, fy, 40);
-    blob(() => c.arc(fx, fy, 20, 0, TAU)); c.strokeStyle = 'rgba(0,0,0,.45)'; c.lineWidth = 1.8; c.beginPath(); for (let j = -1; j <= 1; j++) { c.moveTo(fx + j * 7, fy - 17); c.lineTo(fx + j * 7, fy - 8); } c.stroke();
+  const torso = new Path2D(); torso.moveTo(-74, -156); torso.bezierCurveTo(-86, -112, -66, -66, -36, -48); torso.lineTo(36, -48); torso.bezierCurveTo(66, -66, 86, -112, 74, -156); torso.bezierCurveTo(52, -192, -52, -192, -74, -156); torso.closePath();
+  solid(torso);
+  c.save(); c.clip(torso); c.strokeStyle = 'rgba(0,0,0,.17)'; c.lineWidth = 1.4; c.lineCap = 'round';                // fur strokes
+  for (let i = 0; i < 36; i++) { const x = ((i * 37) % 100 - 50) * 1.4, y = -62 - ((i * 53) % 100) * 1.1; c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + 2, y + 4, x + 1, y + 9); c.stroke(); } c.restore();
+  const plate = new Path2D(); plate.moveTo(0, -156); plate.bezierCurveTo(-34, -154, -44, -108, -26, -80); plate.bezierCurveTo(-14, -64, 14, -64, 26, -80); plate.bezierCurveTo(44, -108, 34, -154, 0, -156); plate.closePath();
+  const cg = c.createLinearGradient(0, -156, 0, -66); cg.addColorStop(0, skinL); cg.addColorStop(1, skin); c.fillStyle = cg; c.fill(plate); c.lineWidth = 2; c.strokeStyle = 'rgba(80,30,40,.5)'; c.stroke(plate);
+  c.beginPath(); c.moveTo(0, -150); c.lineTo(0, -92); c.moveTo(-28, -116); c.quadraticCurveTo(-13, -102, 0, -110); c.moveTo(28, -116); c.quadraticCurveTo(13, -102, 0, -110); c.stroke();   // pecs
+  c.save(); c.clip(torso); c.strokeStyle = 'rgba(255,255,255,.16)'; c.lineWidth = 1.6; c.lineCap = 'round';                                                    // soft fur sheen along the shoulders
+  for (let i = -8; i <= 8; i++) { const x = i * 8; c.beginPath(); c.moveTo(x, -178 + Math.abs(i) * 1.6); c.quadraticCurveTo(x + 2, -170, x + 1, -162 + Math.abs(i)); c.stroke(); } c.restore();
+  for (const s of [-1, 1]) {                                                                                     // arms: upper arm then bulging forearm, with a fist
+    const [ex, ey, fx, fy] = A[s];
+    solid(limbPath(s * 60, -156, ex, ey, fx, fy, 46, 30, 12));                                                    // one smooth tapered arm through the elbow
+    const fist = new Path2D(); fist.ellipse(fx, fy, 19, 17, 0, 0, TAU); solid(fist); c.strokeStyle = 'rgba(0,0,0,.4)'; c.lineWidth = 1.8; c.beginPath(); for (let j = -1; j <= 1; j++) { c.moveTo(fx + j * 6.5, fy - 15); c.quadraticCurveTo(fx + j * 7, fy - 10, fx + j * 6, fy - 5); } c.stroke();
   }
-  const hy = -196 + (roar ? -6 : 0);                                                                           // head (drawn 20% larger for character)
-  c.save(); c.translate(0, hy + 14); c.scale(1.2, 1.2); c.translate(0, -(hy + 14));
-  blob(() => c.ellipse(0, hy - 18, 13, 17, 0, 0, TAU));
-  for (const s of [-1, 1]) { blob(() => c.arc(s * 26, hy + 2, 8, 0, TAU)); c.fillStyle = skin; c.beginPath(); c.arc(s * 26, hy + 2, 4, 0, TAU); c.fill(); }
-  blob(() => c.arc(0, hy, 26, 0, TAU));
-  c.strokeStyle = 'rgba(255,255,255,.28)'; c.lineWidth = 2.4; c.beginPath(); c.arc(0, hy, 22, Math.PI * 1.05, Math.PI * 1.45); c.stroke();
-  const fg = c.createLinearGradient(0, hy - 10, 0, hy + 20); fg.addColorStop(0, skinL); fg.addColorStop(1, skin);
-  blob(() => c.ellipse(0, hy + 4, 18, 19, 0, 0, TAU), fg);
-  blob(() => rr(c, -22, hy - 10, 44, 12, 6), furD);                                                              // heavy brow
+  c.save(); c.translate(0, -176); c.rotate(-hup * .14); c.scale(1.18, 1.18); c.translate(0, 176);                // head, tipped back when roaring
+  const hy = -196;
+  const crest = new Path2D(); crest.ellipse(0, hy - 20, 13, 17, 0, 0, TAU); solid(crest);
+  for (const s of [-1, 1]) { const ear = new Path2D(); ear.arc(s * 27, hy + 2, 8, 0, TAU); solid(ear); c.fillStyle = skin; c.beginPath(); c.arc(s * 27, hy + 2, 4, 0, TAU); c.fill(); }
+  const skull = new Path2D(); skull.moveTo(-25, hy + 6); skull.bezierCurveTo(-31, hy - 20, -15, hy - 36, 0, hy - 37); skull.bezierCurveTo(15, hy - 36, 31, hy - 20, 25, hy + 6); skull.bezierCurveTo(22, hy + 26, -22, hy + 26, -25, hy + 6); skull.closePath(); solid(skull);
+  const mask = new Path2D(); mask.moveTo(-17, hy - 2); mask.bezierCurveTo(-19, hy + 16, -11, hy + 25, 0, hy + 25); mask.bezierCurveTo(11, hy + 25, 19, hy + 16, 17, hy - 2); mask.bezierCurveTo(11, hy - 8, -11, hy - 8, -17, hy - 2); mask.closePath();
+  const fg = c.createLinearGradient(0, hy - 8, 0, hy + 25); fg.addColorStop(0, skinL); fg.addColorStop(1, skin); c.fillStyle = fg; c.fill(mask); c.lineWidth = 2; c.strokeStyle = 'rgba(60,20,30,.55)'; c.stroke(mask);
+  const brow = new Path2D(); brow.moveTo(-23, hy - 5); brow.bezierCurveTo(-18, hy - 12, 18, hy - 12, 23, hy - 5); brow.bezierCurveTo(16, hy - 1, -16, hy - 1, -23, hy - 5); brow.closePath(); solid(brow, furD);
   for (const s of [-1, 1]) {
-    c.fillStyle = WHITE; c.beginPath(); c.ellipse(s * 8, hy - 3, 4.2, 3.2, 0, 0, TAU); c.fill();
+    c.fillStyle = WHITE; c.beginPath(); c.ellipse(s * 8, hy - 3, 4.2, 3.1, 0, 0, TAU); c.fill();
     c.fillStyle = k.flinch > 0 ? '#9FE8FF' : '#FFB347'; c.beginPath(); c.arc(s * 8, hy - 3, 2.5, 0, TAU); c.fill(); c.fillStyle = INK; c.beginPath(); c.arc(s * 8, hy - 3, 1.2, 0, TAU); c.fill();
-    c.strokeStyle = INK; c.lineWidth = 3; c.beginPath(); c.moveTo(s * 15, hy - 11); c.lineTo(s * 3, hy - 4.6); c.stroke();                      // angry brow
+    c.fillStyle = 'rgba(255,255,255,.9)'; c.beginPath(); c.arc(s * 8 - .7, hy - 3.8, .6, 0, TAU); c.fill();
+    c.strokeStyle = INK; c.lineWidth = 2.8; c.beginPath(); c.moveTo(s * 15, hy - 10); c.quadraticCurveTo(s * 9, hy - 8, s * 3, hy - 4.4); c.stroke();                 // angry brow line
   }
-  blob(() => c.ellipse(0, hy + 11, 13.5, 11, 0, 0, TAU), skinL);                                                 // muzzle
-  c.fillStyle = 'rgba(40,10,20,.8)'; for (const s of [-1, 1]) { c.beginPath(); c.ellipse(s * 3.6, hy + 7, 1.8, 2.4, s * .4, 0, TAU); c.fill(); }
-  if (roar || fall || k.flinch > 0) {
-    c.fillStyle = '#4A0F25'; c.strokeStyle = INK; c.lineWidth = 2; c.beginPath(); c.ellipse(0, hy + 16, 10.5, roar ? 9.5 : 6.5, 0, 0, TAU); c.fill(); c.stroke();
-    c.fillStyle = WHITE; poly(c, [-8, hy + 11, -5, hy + 11, -6.5, hy + 18]); poly(c, [8, hy + 11, 5, hy + 11, 6.5, hy + 18]); c.fillStyle = '#FF7A9A'; c.beginPath(); c.ellipse(0, hy + 20, 5.5, 2.6, 0, 0, TAU); c.fill();
-  } else { c.strokeStyle = INK; c.lineWidth = 2.4; c.beginPath(); c.moveTo(-9, hy + 16); c.quadraticCurveTo(0, hy + 21, 9, hy + 16); c.stroke(); }
+  const muzzle = new Path2D(); muzzle.ellipse(0, hy + 11, 13.5, 11, 0, 0, TAU); solid(muzzle, skinL);
+  c.fillStyle = 'rgba(40,10,20,.8)'; for (const s of [-1, 1]) { c.beginPath(); c.ellipse(s * 3.6, hy + 6.5, 1.8, 2.4, s * .4, 0, TAU); c.fill(); }
+  const my = hy + 16, mh = lerp(.8, 9.5, mouth);
+  c.fillStyle = '#4A0F25'; c.strokeStyle = INK; c.lineWidth = 2.2; c.beginPath(); c.ellipse(0, my, lerp(8, 10.5, mouth), mh, 0, 0, TAU); c.fill(); c.stroke();
+  if (mouth > .15) { c.globalAlpha = Math.min(1, mouth * 1.4); c.fillStyle = WHITE; poly(c, [-8, my - mh + 1, -5, my - mh + 1, -6.5, my - mh + 8]); poly(c, [8, my - mh + 1, 5, my - mh + 1, 6.5, my - mh + 8]); c.fillStyle = '#FF7A9A'; c.beginPath(); c.ellipse(0, my + mh * .55, 5.5, 2.6 * mouth, 0, 0, TAU); c.fill(); c.globalAlpha = 1; }
   c.restore();
-  if (k.flinch > 0) { c.fillStyle = 'rgba(190,230,255,.38)'; c.beginPath(); c.ellipse(0, -122, 82, 126, 0, 0, TAU); c.fill(); }
+  if (k.flinch > 0) { const fr = c.createRadialGradient(0, -130, 10, 0, -130, 120); fr.addColorStop(0, 'rgba(190,230,255,.45)'); fr.addColorStop(1, 'rgba(190,230,255,0)'); c.fillStyle = fr; c.fillRect(-130, -260, 260, 280); }   // soft water-splash tint
   c.restore();
-  if (hang) {                                                                                                  // the drone's skid he's holding
+  if (hang) {                                                                                                    // the drone's skid he's holding
     c.save(); c.strokeStyle = INK; c.lineWidth = 7; c.lineCap = 'round'; c.beginPath(); c.moveTo(k.gx - 34, k.gy); c.lineTo(k.gx + 34, k.gy); c.moveTo(k.gx - 22, k.gy); c.lineTo(k.gx - 18, k.gy - 12); c.moveTo(k.gx + 22, k.gy); c.lineTo(k.gx + 18, k.gy - 12); c.stroke();
     c.strokeStyle = '#C9D3F0'; c.lineWidth = 3.4; c.stroke(); c.restore();
   }
