@@ -88,6 +88,17 @@ h1,h2,h3,p{margin:0}
 .list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:7px;font-size:15px}
 .list li::before{content:"\2713";color:var(--cyan);font-weight:700;margin-right:9px}
 .fine{font-size:12px;color:var(--label);text-align:center;line-height:1.4}
+.row2{display:flex;gap:12px}.row2 .btn{flex:1}
+.chip{font:700 15px var(--mono);color:var(--amber-l);background:var(--glass);border:1.5px solid var(--glass-b);border-radius:999px;padding:6px 12px}
+.garage{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.veh{background:var(--glass);border:1.5px solid var(--glass-b);border-radius:18px;padding:10px 10px 12px;color:var(--white);font:inherit;cursor:pointer;text-align:center}
+.veh canvas{width:100%;height:auto;display:block;border-radius:12px;background:linear-gradient(#2A2160,#7C3A8E 70%,#2C3C7E)}
+.veh b{display:block;margin-top:8px;font-size:15px}
+.veh small{display:block;margin-top:2px;font-size:12px;color:var(--label)}
+.veh.on{border-color:var(--amber);box-shadow:0 0 0 2px rgba(255,179,71,.35)}
+.veh.on small{color:var(--amber-l);font-weight:700}
+.veh.locked{cursor:default}.veh.locked canvas{filter:brightness(.35) saturate(.5)}
+.unlock{border:1.5px solid rgba(255,179,71,.6);color:var(--amber-l);font:700 15px var(--font);cursor:pointer;text-align:center}
 .toast{position:absolute;left:24px;right:24px;bottom:120px;background:var(--glass);border:1.5px solid var(--glass-b);border-radius:14px;
   padding:12px 14px;font-size:14px;text-align:center;opacity:0;transition:opacity .25s;pointer-events:none;z-index:9}
 .toast.on{opacity:1}
@@ -102,7 +113,10 @@ button:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
       <div class="logo">DRONE<span class="l2">DROP</span></div>
       <div class="stack" style="margin-top:262px;margin-bottom:0">
         <button class="btn big" data-act="play" id="b-play">PLAY</button>
-        <button class="btn ghost" data-act="levels">Levels &middot; 50 to conquer</button>
+        <div class="row2">
+          <button class="btn ghost" data-act="levels">Levels</button>
+          <button class="btn ghost" data-act="garage">Garage</button>
+        </div>
         <button class="btn ghost" data-act="howto">How to play</button>
       </div>
       <p class="tag">Catch every parcel. Outsmart the pelican.</p>
@@ -118,6 +132,12 @@ button:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
     <section class="screen scrim" id="s-levels">
       <div class="head"><h2>Choose a level</h2><button class="btn sm ghost" data-act="back">Back</button></div>
       <div class="scroll" id="lv-list"></div>
+    </section>
+
+    <section class="screen scrim" id="s-garage">
+      <div class="head"><h2>Garage</h2><span class="chip" id="g-stars">0</span><button class="btn sm ghost" data-act="back">Back</button></div>
+      <p class="fine" style="margin-bottom:12px">Earn stars on levels to unlock new rides. They look different, but every vehicle catches exactly the same.</p>
+      <div class="scroll"><div class="garage" id="g-list"></div></div>
     </section>
 
     <section class="screen scrim center" id="s-pause">
@@ -142,6 +162,7 @@ button:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
           <div class="stat"><span>Best combo</span><b id="c-combo">0</b></div>
           <div class="stat"><span>Big vans</span><b id="c-big">0</b></div>
         </div>
+        <button class="card unlock" data-act="garage" id="c-unlock" hidden></button>
         <button class="btn big" data-act="next" id="c-next">Next level</button>
         <button class="btn ghost" data-act="retry">Replay for more stars</button>
         <button class="btn ghost" data-act="levels">Levels</button>
@@ -261,7 +282,7 @@ const stage = $('#stage'), cv = $('#c'), ctx = cv.getContext('2d'), view = { s: 
 /* ------------------------------ SAVE (try/catch) ------------------------ */
 const Save = {
   key: 'dronedrop.v1',
-  d: { best: 0, maxLevel: 1, stars: {}, unlocked: false, mute: false, seenHow: false, cid: '' },
+  d: { best: 0, maxLevel: 1, stars: {}, unlocked: false, mute: false, seenHow: false, cid: '', vehicle: 'van' },
   load() { try { const s = JSON.parse(localStorage.getItem(this.key) || 'null'); if (s) Object.assign(this.d, s); } catch (e) { /* works without storage */ }
     if (!this.d.cid) { this.d.cid = Math.random().toString(36).slice(2) + Date.now().toString(36); this.flush(); } },
   flush() { try { localStorage.setItem(this.key, JSON.stringify(this.d)); } catch (e) { /* ignore */ } }
@@ -695,23 +716,57 @@ function getBG(L) {
 let bgScale = 1;
 
 /* ------------------------------ SPRITES --------------------------------- */
-function drawVan(c, len, dir, rot, glowCol) {
+/* Vehicles are cosmetic: identical size, catch bin and catch width. Unlocked by total stars. */
+const VEHICLES = [
+  { id: 'van',   name: 'Delivery Van', stars: 0,   body: WHITE,     stripe: CYAN,      hub: '#9AA3D6' },
+  { id: 'taxi',  name: 'City Taxi',    stars: 8,   body: '#FFD23F', stripe: INK,       hub: '#9AA3D6' },
+  { id: 'cream', name: 'Ice-Cream Van', stars: 20, body: '#FF9EC4', stripe: '#FFF3C4', hub: '#9AA3D6' },
+  { id: 'fire',  name: 'Fire Truck',   stars: 40,  body: '#E5352F', stripe: WHITE,     hub: '#9AA3D6' },
+  { id: 'food',  name: 'Food Truck',   stars: 70,  body: '#2FC4B2', stripe: AMBER,     hub: '#9AA3D6' },
+  { id: 'gold',  name: 'Golden Van',   stars: 110, body: '#FFD65A', stripe: WHITE,     hub: '#FFF3C4' }
+];
+const totalStars = () => Object.values(Save.d.stars).reduce((a, b) => a + b, 0);
+const curVeh = () => { const v = VEHICLES.find(x => x.id === Save.d.vehicle); return v && v.stars <= totalStars() ? v : VEHICLES[0]; };
+function vanDeco(c, id, h, len, cab, t) {
+  const rx = h - cab, bodyW = len - cab - 2;
+  if (id === 'taxi') {
+    for (let i = 0, x = -h + 4; x < h - cab + 2; i++, x += 8) { c.fillStyle = i % 2 ? INK : WHITE; c.fillRect(x, -22, 8, 6); }
+    c.fillStyle = WHITE; c.strokeStyle = INK; c.lineWidth = 2; rr(c, rx + 7, -55, 17, 9, 2); c.fill(); c.stroke(); c.fillStyle = AMBER; c.fillRect(rx + 10, -52, 11, 3);
+  } else if (id === 'cream') {
+    c.fillStyle = '#FFF3C4'; circ(c, rx + 16, -53, 6.5); c.fillStyle = '#FF7FB0'; circ(c, rx + 16, -61, 5.5); c.fillStyle = '#E5352F'; circ(c, rx + 16, -67, 2.2);
+    c.strokeStyle = INK; c.lineWidth = 1.6; c.beginPath(); c.arc(rx + 16, -53, 6.5, 0, TAU); c.stroke();
+    c.fillStyle = WHITE; for (let x = -h + 14; x < rx - 8; x += 17) circ(c, x, -18, 3.2);
+  } else if (id === 'fire') {
+    c.fillStyle = '#FFD23F'; c.fillRect(-h + 4, -22, bodyW - 4, 3);
+    const on = Math.sin(t * 14) > 0; c.fillStyle = on ? '#4FA6FF' : '#E5352F'; c.fillRect(rx + 6, -53, 9, 7); c.fillStyle = on ? '#E5352F' : '#4FA6FF'; c.fillRect(rx + 15, -53, 9, 7);
+    c.strokeStyle = INK; c.lineWidth = 1.6; c.strokeRect(rx + 6, -53, 18, 7); glow(c, rx + 15, -50, 22, on ? '#4FA6FF' : '#FF5C5C', .45);
+  } else if (id === 'food') {
+    for (let i = 0, x = -h + 6; x < rx - 6; i++, x += 8) { c.fillStyle = i % 2 ? WHITE : AMBER; c.fillRect(x, -46, 8, 8); }
+    c.strokeStyle = INK; c.lineWidth = 1.6; c.strokeRect(-h + 6, -46, Math.floor((rx - 6 - (-h + 6)) / 8) * 8, 8);
+    c.fillStyle = INK; c.fillRect(rx + 8, -58, 5, 12);
+  } else if (id === 'gold') {
+    c.fillStyle = 'rgba(255,255,255,.55)'; for (const [x, y, s] of [[-h + 14, -40, 4], [-h + 40, -22, 3], [rx - 14, -36, 3.5]]) { const k = s * (1 + .35 * Math.sin(t * 6 + x)); poly(c, [x, y - k, x + k * .3, y - k * .3, x + k, y, x + k * .3, y + k * .3, x, y + k, x - k * .3, y + k * .3, x - k, y, x - k * .3, y - k * .3]); }
+  }
+}
+function drawVan(c, len, dir, rot, glowCol, veh, t = 0) {
+  veh = veh || VEHICLES[0];
   c.save(); c.scale(dir, 1); const h = len / 2, cab = 32;
   c.fillStyle = 'rgba(0,0,0,.22)'; c.beginPath(); c.ellipse(0, 1, h * .95, 4, 0, 0, TAU); c.fill();
   if (glowCol) glow(c, 0, -34, h + 40, glowCol, .35);
   c.lineJoin = 'round'; c.lineWidth = 3; c.strokeStyle = INK;
-  c.fillStyle = WHITE; rr(c, -h, -52, len - cab + 6, 42, 8); c.fill(); c.stroke();
+  c.fillStyle = veh.body; rr(c, -h, -52, len - cab + 6, 42, 8); c.fill(); c.stroke();
   c.beginPath(); c.moveTo(h - cab, -46); c.lineTo(h - 12, -46); c.quadraticCurveTo(h - 3, -44, h, -30); c.lineTo(h, -10); c.lineTo(h - cab, -10); c.closePath(); c.fill(); c.stroke();
   c.fillStyle = '#1B2A66'; poly(c, [h - cab + 6, -40, h - 13, -40, h - 6, -28, h - cab + 6, -28]);
   c.fillStyle = 'rgba(255,255,255,.3)'; poly(c, [h - cab + 8, -39, h - 22, -39, h - 26, -29, h - cab + 8, -29]);
-  c.fillStyle = CYAN; c.fillRect(-h + 3, -32, len - cab - 1, 6);
+  c.fillStyle = veh.stripe; c.fillRect(-h + 3, -32, len - cab - 1, 6);
+  vanDeco(c, veh.id, h, len, cab, t);
   c.fillStyle = AMBER_L; circ(c, h - 3, -17, 3);
   const bw = len - cab - 10;                                           // open roof bin
   c.fillStyle = TEAL; rr(c, -h + 6, -66, bw, 16, 4); c.fill(); c.stroke();
   c.fillStyle = CYAN; rr(c, -h + 6, -58, bw, 9, 3); c.fill(); c.stroke();
   c.fillStyle = '#0B5C58'; c.fillRect(-h + 11, -64, bw - 10, 4);
   for (const wx of len > 150 ? [-h + 24, 0, h - 20] : [-h + 22, h - 20]) {
-    c.fillStyle = INK; circ(c, wx, -9, 10); c.fillStyle = '#9AA3D6'; circ(c, wx, -9, 4.5);
+    c.fillStyle = INK; circ(c, wx, -9, 10); c.fillStyle = veh.hub; circ(c, wx, -9, 4.5);
     c.strokeStyle = INK; c.lineWidth = 1.5; c.beginPath(); c.moveTo(wx + Math.cos(rot) * 4, -9 + Math.sin(rot) * 4); c.lineTo(wx - Math.cos(rot) * 4, -9 - Math.sin(rot) * 4); c.stroke(); c.lineWidth = 3;
   }
   c.restore();
@@ -978,8 +1033,9 @@ function levelClear() {
   G.state = 'clear'; G.endT = 1.1;
   for (const p of G.parcels) if (!p.caught) { sparks(p.x, p.y, 6, [AMBER_L, WHITE]); p.dead = true; } G.fish = [];
   G.bonus = CONFIG.score.levelBonus + CONFIG.score.perLife * G.lives; G.score += G.bonus;
-  const stars = G.lostLives === 0 ? 3 : G.lostLives === 1 ? 2 : 1;
-  Save.d.stars[G.L] = Math.max(Save.d.stars[G.L] || 0, stars); Save.d.maxLevel = Math.max(Save.d.maxLevel, Math.min(CONFIG.levels.total, G.L + 1));
+  const stars = G.lostLives === 0 ? 3 : G.lostLives === 1 ? 2 : 1, before = totalStars();
+  Save.d.stars[G.L] = Math.max(Save.d.stars[G.L] || 0, stars);
+  G.newVeh = VEHICLES.filter(v => v.stars > before && v.stars <= totalStars()); Save.d.maxLevel = Math.max(Save.d.maxLevel, Math.min(CONFIG.levels.total, G.L + 1));
   Save.d.best = Math.max(Save.d.best, G.score); Save.flush(); G.stars = stars; Sfx.play('clear'); sparks(195, 420, 40, [AMBER_L, CYAN, PINK, WHITE]);
 }
 function gameOver() { G.state = 'over'; G.endT = .9; Save.d.best = Math.max(Save.d.best, G.score); Save.flush(); Sfx.play('over'); }
@@ -1040,7 +1096,7 @@ function drawVanNow(c, t) {
   const sc = vanScale(), big = G.bigT > 0;
   c.save(); c.translate(G.vanX, CONFIG.scene.deckY); c.scale(sc, sc);
   const gc = big ? CYAN : G.magnetT > 0 ? '#A66BFF' : null;
-  drawVan(c, G.vanW / sc, G.vanDir, G.wheel, gc); c.restore();
+  drawVan(c, G.vanW / sc, G.vanDir, G.wheel, gc, curVeh(), t); c.restore();
   if (G.magnetT > 0) { const r = catchHalf(); c.save(); c.strokeStyle = 'rgba(166,107,255,.8)'; c.lineWidth = 2; c.setLineDash([5, 5]); c.lineDashOffset = -t * 30;
     c.beginPath(); c.moveTo(G.vanX - r, binLine()); c.lineTo(G.vanX + r, binLine()); c.stroke(); c.restore(); }
 }
@@ -1117,7 +1173,7 @@ function render(t) {
 }
 
 /* ------------------------------ SCREENS & UI ---------------------------- */
-const SCREENS = ['title', 'howto', 'levels', 'pause', 'clear', 'over', 'pay', 'win'];
+const SCREENS = ['title', 'howto', 'levels', 'garage', 'pause', 'clear', 'over', 'pay', 'win'];
 function show(name) { SCREENS.forEach(n => $('#s-' + n).classList.toggle('on', n === name)); G.menu = name; }
 let toastT = 0;
 function toast(msg) { const e = $('#toast'); e.textContent = msg; e.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => e.classList.remove('on'), 2600); }
@@ -1137,6 +1193,8 @@ function state_end() {
     const last = G.L >= CONFIG.levels.total;
     $('#c-kicker').textContent = 'Level ' + G.L + ' clear'; $('#c-title').textContent = G.info.world.name.toUpperCase();
     $('#c-stars').innerHTML = [1, 2, 3].map(i => `<span class="${i <= G.stars ? '' : 'off'}">★</span>`).join('');
+    const nv = G.newVeh || [], ub = $('#c-unlock'); ub.hidden = !nv.length;
+    if (nv.length) ub.textContent = '🎉 New ride unlocked: ' + nv.map(v => v.name).join(', ') + ' ›';
     $('#c-score').textContent = pad4(G.score); $('#c-bonus').textContent = '+' + G.bonus; $('#c-combo').textContent = G.stats.bestCombo; $('#c-big').textContent = G.stats.big;
     $('#c-next').textContent = last ? 'Finish' : (G.L >= CONFIG.levels.free && !Billing.unlocked()) ? 'Unlock more levels' : 'Next level'; show('clear');
   }
@@ -1179,12 +1237,25 @@ function buildLevels() {
     el.querySelector('.thumbwrap').replaceWith(th); box.appendChild(el);
   }
 }
+function buildGarage() {
+  const stars = totalStars(), cur = curVeh(); $('#g-stars').textContent = '★ ' + stars;
+  $('#g-list').innerHTML = VEHICLES.map(v => {
+    const ok = v.stars <= stars, on = ok && v.id === cur.id;
+    return `<button class="veh${on ? ' on' : ''}${ok ? '' : ' locked'}" data-act="equip" data-id="${v.id}" aria-label="${v.name}${ok ? '' : ', locked'}"><canvas width="240" height="150" data-v="${v.id}"></canvas><b>${v.name}</b><small>${on ? 'Equipped' : ok ? 'Tap to drive' : '★ ' + v.stars + ' · ' + (v.stars - stars) + ' to go'}</small></button>`;
+  }).join('');
+  document.querySelectorAll('#g-list canvas').forEach(cv3 => {
+    const c = cv3.getContext('2d'), v = VEHICLES.find(x => x.id === cv3.dataset.v); c.scale(2, 2);
+    c.fillStyle = 'rgba(255,255,255,.08)'; c.fillRect(0, 96, 120, 2); c.translate(60, 88); c.scale(.9, .9); drawVan(c, 96, 1, 0, null, v, 1);
+  });
+}
 function act(a, d) {
   Sfx.init(); if (a !== 'mute') Sfx.play('ui');
   switch (a) {
     case 'play': startLevel(playLevel(), 'fresh'); break;
     case 'levels': ui.from = G.menu === 'levels' ? ui.from : G.menu; buildLevels(); show('levels'); break;
     case 'howto': ui.from = G.menu; show('howto'); break;
+    case 'garage': ui.from = G.menu === 'garage' ? ui.from : G.menu; buildGarage(); show('garage'); break;
+    case 'equip': { const v = VEHICLES.find(x => x.id === d.id); if (v && v.stars <= totalStars()) { Save.d.vehicle = v.id; Save.flush(); buildGarage(); } else toast('Earn more stars to unlock this ride.'); } break;
     case 'back': show(ui.from === 'levels' || ui.from === 'howto' ? 'title' : ui.from || 'title'); break;
     case 'mute': Save.d.mute = !Save.d.mute; Save.flush(); refreshTitle(); break;
     case 'pick': { const L = +d.level; if (canPlay(L)) startLevel(L, 'fresh'); else if (L > CONFIG.levels.free) { $('#pay-price').textContent = '$' + CONFIG.billing.priceUSD; ui.payFrom = 'levels'; $('#pay-kicker').textContent = 'Locked levels'; show('pay'); } else toast('Clear the earlier levels first.'); } break;
@@ -1256,7 +1327,7 @@ function boot() {
   buildHow(); refreshTitle(); startDemo(); show('title');
   if (document.fonts && document.fonts.load) { document.fonts.load(`700 24px "Space Mono"`); document.fonts.load(`700 20px "Space Grotesk"`); }
   requestAnimationFrame(frame);
-  if (Billing.isDev) window.__dd = { G, CONFIG, Save, Billing, startLevel, levelCfg, levelInfo, buildBG, WORLDS, act, update, show, render, inp, syncInput,
+  if (Billing.isDev) window.__dd = { G, CONFIG, Save, Billing, buildGarage, VEHICLES, startLevel, levelCfg, levelInfo, buildBG, WORLDS, act, update, show, render, inp, syncInput,
     step(sec) { for (let i = 0; i < sec * 60; i++) update(1 / 60); render(G.time); } };
 }
 boot();

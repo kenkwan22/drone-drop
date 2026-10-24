@@ -40,6 +40,10 @@ The pelican strikes every 14-22 s early on and every 4-16 s late (`pelGap`). Fro
 
 Extras: golden parcels (+50), heart (+1 life), slow-mo and magnet bubbles.
 
+## Garage
+
+Six cosmetic vehicles, unlocked by total stars (see `VEHICLES` in `index.html`): Delivery Van (0), City Taxi (8), Ice-Cream Van (20), Fire Truck (40), Food Truck (70), Golden Van (110). They share one size, catch bin and catch width, so choosing one never changes difficulty. Open the Garage from the title screen, or from the "new ride unlocked" banner on the level-clear screen.
+
 ## Paywall
 
 Levels 1-8 are free. Levels 9-50 are the **World Tour**, a one-time $15 purchase (`CONFIG.billing`).
