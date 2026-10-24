@@ -409,12 +409,12 @@ const fallBase = L => L <= 5 ? 120 + 15 * (L - 1) : Math.min(360, 180 + 7 * (L -
 const birdGap = (L, g, fa, fb) => { const f = L >= 10 ? Math.max(.6, .75 - (L - 10) * .05) : 1; return [Math.max(fa, g[0] * f), Math.max(fb, g[1] * f)]; };
 const hzGap = (L, a, b, fa, fb) => { const hf = L >= 7 ? Math.max(.55, 1 - (L - 6) * .03) : 1; return [Math.max(fa, a * hf), Math.max(fb, b * hf)]; };
 /* Difficulty peaks at level 45-50, then eases off again so the late worlds are a victory lap, not a wall (level 75 plays like level ~32). */
-const kongCfg = L => L >= 20 && (L <= 50 ? L % 5 === 0 : L % 10 === 0 || L === CONFIG.levels.total) ? { gap: L > 50 ? [14, 20] : [11, 17], hold: L > 50 ? 3.5 : Math.min(5, 3.5 + (L - 20) / 5 * .5), dvx: L > 50 ? 85 : Math.min(125, 85 + (L - 20) * 3) } : null;
+const kongCfg = L => L >= 20 && (L <= 50 ? L % 5 === 0 : L % 10 === 0 || L === CONFIG.levels.total) ? { gap: L > 40 ? [14, 20] : [11, 17], hold: L > 40 ? 3.5 : Math.min(5, 3.5 + (L - 20) / 5 * .5), dvx: L > 50 ? 85 : Math.min(125, 85 + (L - 20) * 3) } : null;
 function levelCfg(L) {
-  const D = L <= 50 ? Math.min(L, 45) : Math.max(24, 36 - (L - 51) * .7);
+  const D = L <= 50 ? Math.min(L, 42) : Math.max(24, 36 - (L - 51) * .7);
   const c = cfgFor(Math.floor(D)); c.L = L;
   if (L > 50) { c.pelGap = c.pelGap.map(v => v * 1.35); c.gull = c.gull.map(v => v * 1.35); c.gullSteal *= .6; }   // the birds calm down after level 50 too
-  c.quota = L <= 50 ? Math.min(54, 14 + Math.floor(L * .8)) : 54 - Math.floor((L - 50) / 5) * 2; c.kong = kongCfg(L); return c;
+  c.quota = L <= 50 ? Math.min(48, 14 + Math.floor(L * .8)) : 48 - Math.floor((L - 50) / 5) * 2; c.kong = kongCfg(L); return c;
 }
 function cfgFor(L) {
   const base = fallBase(L), next = fallBase(Math.min(CONFIG.levels.total, L + 1));
@@ -1130,11 +1130,14 @@ function release(n) {
   const d = G.drone, big = n.kind === 'bomb' || n.kind === 'heart' || n.kind === 'slow' || n.kind === 'magnet', held = apeHolding();
   // while the ape shakes the drone, parcels leave at an angle (constant sideways drift dvx)
   G.parcels.push({ id: ++G.ids, kind: n.kind, x: clamp(d.x + (held ? d.jx : 0), 20, W - 20), y: d.y + (held ? d.jy : 0) + 34, vy: n.vy, h: big ? 32 : CONFIG.parcel.h, passed: false, caught: false, dead: false, ct: 0, wk: 1, s: 1,
-    dvx: held ? rnd(.6, 1) * G.cfg.kong.dvx * (Math.random() < .5 ? -1 : 1) : 0 });
+    dvx: held ? clamp(d.jvx * .9 + rnd(-35, 35), -180, 180) : 0 });          // parcels inherit the drone's sideways swing, so the angle is hard to read
 }
 function updateDrone(dt) {
   const d = G.drone, cfg = G.cfg; d.y = CONFIG.drone.y + Math.sin(G.time * 2.4) * 4;
-  if (apeHolding()) { d.jx = Math.sin(G.time * 38) * 11 + Math.sin(G.time * 23) * 7; d.jy = Math.sin(G.time * 31) * 8; } else { d.jx = 0; d.jy = 0; }
+  if (apeHolding()) {                                                      // the swinging ape drags the drone side to side
+    const k = G.hz.kong, nj = Math.sin(k.th) * 50 + Math.sin(G.time * 38) * 3;
+    d.jvx = (nj - (d.pjx || 0)) / Math.max(dt, .001); d.jx = nj; d.pjx = nj; d.jy = Math.abs(Math.sin(k.th)) * 10 + Math.sin(G.time * 31) * 2.5;
+  } else { d.jx = 0; d.jy = 0; d.jvx = 0; d.pjx = 0; }
   const ok = G.banner <= .6 && (G.state === 'playing' || G.demo);
   if (d.next) {
     const dx = d.next.x - d.x, step = cfg.droneSpeed * dt;
@@ -1145,7 +1148,7 @@ function updateDrone(dt) {
     d.tilt = lerp(d.tilt, 0, Math.min(1, dt * 8)); d.cool -= dt;
     if (ok && d.cool <= 0 && live() < cfg.inFlight) d.next = planDrop();
   }
-  if (apeHolding()) d.tilt = Math.sin(G.time * 27) * .45;
+  if (apeHolding()) d.tilt = -G.hz.kong.th * .45 + Math.sin(G.time * 27) * .05;
 }
 function updateVan(dt) {
   const v = CONFIG.van, cfg = G.cfg, sp = v.speed * (G.turboT > 0 ? v.turboSpeed : 1); let desired = 0;
@@ -1223,7 +1226,7 @@ const cannonPos = () => [G.vanX + G.vanDir * 22, CONFIG.scene.deckY - 50 * vanSc
 function cannonTarget() {
   const p = G.pel, r = G.hz.rogue, k = G.hz.kong;
   if (G.cfg.pelican && (p.ph === 'warn' || p.ph === 'snatch' || p.ph === 'out')) { const perched = p.ph === 'warn'; return { kind: 'pel', x: perched ? CONFIG.pelican.perchX : p.x, y: perched ? CONFIG.pelican.perchY - 28 : p.y - 16 }; }
-  if (k && k.ph === 'cling') return { kind: 'kong', x: k.px, y: k.py - 70, ref: k };
+  if (k && k.ph === 'cling') return { kind: 'kong', x: (k.gx + k.px) / 2, y: (k.gy + k.py) / 2, ref: k };
   if (r && r.ph === 'fly') return { kind: 'rogue', x: r.x, y: r.y, ref: r };
   let best = null, bd = 1e9;                                              // the seagull closest to a falling parcel
   for (const g of G.hz.gulls) { if (g.flee || g.x < -10 || g.x > W + 10) continue; let d = 500; for (const q of G.parcels) if (!q.passed) d = Math.min(d, Math.hypot(q.x - g.x, q.y - g.y)); if (d < bd) { bd = d; best = g; } }
@@ -1256,7 +1259,7 @@ function updateCannon(dt) {
 }
 
 /* ---- boss ape (levels 20, 25, 30, 35): wades in from the sea, leaps onto the drone and shakes it ---- */
-const APE_FEET = 540, APE_CLING = .8;
+const APE_FEET = 540, APE_CLING = .55;
 function apeLetGo(k) { k.ph = 'fall'; k.vy = -140; k.vx = (k.px < W / 2 ? -1 : 1) * 70; Sfx.play('bomb'); }
 function updateKong(dt) {
   const k = G.hz.kong; if (!k) return; k.breath += dt; k.flinch = Math.max(0, k.flinch - dt);
@@ -1265,11 +1268,20 @@ function updateKong(dt) {
     case 'idle': k.px = k.x; k.py = APE_FEET; k.sc = 1; k.t -= dt; if (k.t <= 0 && play && G.banner <= .6) { k.ph = 'roar'; k.t = 1.2; Sfx.play('roar'); } break;
     case 'roar': k.t -= dt; if (!REDUCED) G.shake = Math.max(G.shake, .1); if (k.t <= 0) { k.ph = 'leap'; k.u = 0; k.x0 = k.x; } break;
     case 'leap': {
-      k.u = Math.min(1, k.u + dt / .95); const fy = d.y + 130 * APE_CLING;
+      k.u = Math.min(1, k.u + dt / .95); const fy = d.y + 34 + 240 * APE_CLING;                       // feet end up one body-length below the drone's skid
       k.px = lerp(k.x0, d.x, k.u); k.py = lerp(APE_FEET, fy, k.u) - 250 * Math.sin(Math.PI * k.u); k.sc = lerp(1, APE_CLING, k.u);
-      if (k.u >= 1) { k.ph = 'cling'; k.hold = G.cfg.kong.hold; G.shake = REDUCED ? 0 : .45; G.flash = .5; G.flashCol = '255,255,255'; Sfx.play('bomb'); pop('GRABBED!', d.x, d.y + 80, '#FF8FB0', 24); sparks(d.x, d.y, 20, [WHITE, AMBER_L, PINK]); }
+      if (k.u >= 1) {
+        k.ph = 'cling'; k.hold = G.cfg.kong.hold; k.th = -Math.sign(d.x - k.x0 || 1) * .8; k.om = 0; k.kick = .3; k.gx = d.x; k.gy = d.y + 34;     // he swings in with the leap's momentum
+        G.shake = REDUCED ? 0 : .45; G.flash = .5; G.flashCol = '255,255,255'; Sfx.play('bomb'); pop('HANGING ON!', d.x, d.y + 90, '#FF8FB0', 24); sparks(d.x, d.y + 30, 20, [WHITE, AMBER_L, PINK]);
+      }
     } break;
-    case 'cling': k.px = d.x + d.jx * .6; k.py = d.y + 130 * APE_CLING + d.jy * .6; k.sc = APE_CLING; k.hold -= dt; if (k.hold <= 0) apeLetGo(k); break;
+    case 'cling': {                                                                                   // hangs from the drone's skid and swings like a pendulum, with random lurches
+      k.kick -= dt; k.om += (-9 * Math.sin(k.th) - .35 * k.om) * dt;
+      if (k.kick <= 0) { k.om += rnd(-3.8, 3.8); k.kick = rnd(.5, 1.1); }
+      k.th = clamp(k.th + k.om * dt, -1.05, 1.05); k.sc = APE_CLING; k.gx = d.x + d.jx; k.gy = d.y + 34 + d.jy;
+      k.px = k.gx - Math.sin(k.th) * 240 * k.sc; k.py = k.gy + Math.cos(k.th) * 240 * k.sc;
+      k.hold -= dt; if (k.hold <= 0) apeLetGo(k);
+    } break;
     case 'fall':
       k.vy += 950 * dt; k.px += k.vx * dt; k.py += k.vy * dt; k.sc = lerp(k.sc, 1, Math.min(1, dt * 3));
       if (k.py > APE_FEET + 10) { splash(k.px, 506); splash(k.px - 26, 510); splash(k.px + 26, 510); sparks(k.px, 500, 18, ['#BFE6FF', WHITE]); Sfx.play('fish'); k.ph = 'idle'; k.t = rnd(gap[0], gap[1]); k.x = k.px < W / 2 ? rnd(250, 330) : rnd(60, 140); }
@@ -1277,38 +1289,65 @@ function updateKong(dt) {
   }
 }
 function drawApe(c, t, k) {
-  const P = palOf(), fur = mix(P.near, '#1a1424', .5), skin = mix('#8A6F86', P.mid, .3), edge = 'rgba(244,241,255,.2)';
-  c.save(); c.beginPath(); c.rect(0, 0, W, 506); c.clip(); c.translate(k.px, k.py); c.scale(k.sc, k.sc); c.lineJoin = 'round'; c.lineCap = 'round';
-  const roar = k.ph === 'roar' || k.ph === 'leap', grab = k.ph === 'cling', idle = k.ph === 'idle';
-  const beat = idle ? Math.max(0, Math.sin(k.breath * 6)) : 0, side = Math.sin(k.breath * 3) > 0 ? 1 : -1, bob = idle ? Math.sin(k.breath * 2) * 3 : 0;
-  c.translate(0, bob);
-  const body = (draw) => { c.fillStyle = fur; c.strokeStyle = edge; c.lineWidth = 2; draw(); c.fill(); c.stroke(); };
-  body(() => rr(c, -42, -58, 32, 58, 12)); body(() => rr(c, 10, -58, 32, 58, 12));                          // legs
-  body(() => { c.beginPath(); c.ellipse(0, -112, 58, 66, 0, 0, TAU); });                                       // body
-  c.fillStyle = skin; c.beginPath(); c.ellipse(0, -108, 34, 42, 0, 0, TAU); c.fill();                        // chest
-  c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = 2; c.beginPath(); c.moveTo(0, -146); c.lineTo(0, -74); c.stroke();
-  body(() => { c.beginPath(); c.ellipse(0, -152, 70, 30, 0, 0, TAU); });                                       // shoulders
-  for (const s of [-1, 1]) {                                                                                   // arms
-    let fx, fy;
-    if (roar) { fx = s * 78; fy = -204 + Math.sin(t * 24 + s) * 5; } else if (grab) { fx = s * 84; fy = -140; }
-    else if (k.ph === 'fall') { fx = s * 84; fy = -190 + Math.sin(t * 20 + s) * 12; }
-    else { const on = s === side ? beat : 0; fx = lerp(s * 80, s * 22, on); fy = lerp(-62, -118, on); }
-    c.strokeStyle = fur; c.lineWidth = 30; c.beginPath(); c.moveTo(s * 60, -150); c.quadraticCurveTo(s * 92, (-150 + fy) / 2 + 10, fx, fy); c.stroke();
-    c.strokeStyle = edge; c.lineWidth = 2; c.beginPath(); c.moveTo(s * 60, -164); c.quadraticCurveTo(s * 104, (-164 + fy) / 2 + 6, fx + s * 4, fy - 14); c.stroke();
-    c.fillStyle = fur; c.beginPath(); c.arc(fx, fy, 17, 0, TAU); c.fill(); c.stroke();
+  const P = palOf(), fur = mix('#5A4668', P.near, .3), furD = mix('#2E2240', P.near, .4), furL = mix('#9A82AE', P.mid, .25), skin = mix('#C99C94', P.mid, .15), skinL = mix('#E0BDB2', P.mid, .1);
+  const hang = k.ph === 'cling', roar = k.ph === 'roar' || k.ph === 'leap', idle = k.ph === 'idle', fall = k.ph === 'fall';
+  c.save(); c.beginPath(); c.rect(0, 0, W, 506); c.clip(); c.lineJoin = 'round'; c.lineCap = 'round';
+  if (hang) { c.translate(k.gx, k.gy); c.rotate(k.th); c.scale(k.sc, k.sc); c.translate(0, 240); } else { c.translate(k.px, k.py); c.scale(k.sc, k.sc); }
+  const beat = idle ? Math.max(0, Math.sin(k.breath * 6)) : 0, side = Math.sin(k.breath * 3) > 0 ? 1 : -1;
+  if (idle) c.translate(0, Math.sin(k.breath * 2) * 3);
+  const g = c.createLinearGradient(-70, -240, 70, 0); g.addColorStop(0, furL); g.addColorStop(.45, fur); g.addColorStop(1, furD);
+  const blob = (fn, fill) => { c.beginPath(); fn(); c.fillStyle = fill || g; c.fill(); c.lineWidth = 3; c.strokeStyle = INK; c.stroke(); };
+  const limb = (x0, y0, x1, y1, w) => { c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.strokeStyle = INK; c.lineWidth = w + 6; c.stroke(); c.strokeStyle = g; c.lineWidth = w; c.stroke(); };
+  const spikes = (x, y, n, w, h) => { for (let i = 0; i < n; i++) blob(() => { const sx = x + (i - (n - 1) / 2) * w; c.moveTo(sx - w * .7, y); c.lineTo(sx, y - h - ((i * 7) % 4)); c.lineTo(sx + w * .7, y); c.closePath(); }, fur); };
+  for (const s of [-1, 1]) {                                                                                   // legs
+    if (hang) { const a = Math.sin(t * 6 + s * 1.3 + k.th * 2) * .38; limb(s * 22, -66, s * 22 + Math.sin(a) * 52, -66 + Math.cos(a) * 58, 28); blob(() => c.ellipse(s * 22 + Math.sin(a) * 56, -66 + Math.cos(a) * 62, 15, 9, 0, 0, TAU)); }
+    else limb(s * 26, -66, s * 28, -8, 32);
   }
-  body(() => { c.beginPath(); c.arc(0, -192 + (roar ? -4 : 0), 25, 0, TAU); });                                // head
-  body(() => { c.beginPath(); c.arc(-24, -194, 7, 0, TAU); }); body(() => { c.beginPath(); c.arc(24, -194, 7, 0, TAU); });   // ears
-  c.fillStyle = skin; c.beginPath(); c.ellipse(0, -186, 16, 15, 0, 0, TAU); c.fill();
-  c.fillStyle = fur; c.fillRect(-20, -204, 40, 9);                                                              // brow
-  const mad = k.flinch > 0 ? '#FFFFFF' : '#FFE27D'; c.fillStyle = mad; circ(c, -7, -197, 2.6); circ(c, 7, -197, 2.6); c.fillStyle = INK; circ(c, -7, -197, 1.2); circ(c, 7, -197, 1.2);
-  c.fillStyle = 'rgba(0,0,0,.55)'; circ(c, -3, -186, 1.5); circ(c, 3, -186, 1.5);
-  if (roar || k.flinch > 0) { c.fillStyle = '#4A0F25'; c.beginPath(); c.ellipse(0, -176, 10, roar ? 9 : 6, 0, 0, TAU); c.fill(); c.fillStyle = WHITE; c.fillRect(-7, -183, 3, 4); c.fillRect(4, -183, 3, 4); }
-  else { c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = 2; c.beginPath(); c.moveTo(-8, -177); c.quadraticCurveTo(0, -172, 8, -177); c.stroke(); }
-  if (k.flinch > 0) { c.globalAlpha = .35; c.fillStyle = '#BFE6FF'; c.beginPath(); c.ellipse(0, -120, 70, 100, 0, 0, TAU); c.fill(); }
+  blob(() => c.ellipse(0, -112, 62, 70, 0, 0, TAU));                                                           // barrel body
+  c.save(); c.beginPath(); c.ellipse(0, -112, 62, 70, 0, 0, TAU); c.clip(); c.strokeStyle = 'rgba(0,0,0,.2)'; c.lineWidth = 1.4;                  // fur strokes
+  for (let i = 0; i < 34; i++) { const x = ((i * 37) % 100 - 50) * 1.15, y = -70 - ((i * 53) % 100) * .9; c.beginPath(); c.moveTo(x, y); c.lineTo(x + 3, y + 8); c.stroke(); } c.restore();
+  const cg = c.createLinearGradient(0, -150, 0, -70); cg.addColorStop(0, skinL); cg.addColorStop(1, skin);
+  blob(() => c.ellipse(0, -118, 38, 46, 0, 0, TAU), cg); c.strokeStyle = 'rgba(80,30,40,.55)'; c.lineWidth = 2; c.beginPath(); c.moveTo(0, -158); c.lineTo(0, -92);      // chest plate
+  c.moveTo(-26, -118); c.quadraticCurveTo(-12, -104, 0, -112); c.moveTo(26, -118); c.quadraticCurveTo(12, -104, 0, -112); c.stroke();
+  blob(() => c.ellipse(0, -160, 76, 30, 0, 0, TAU)); spikes(0, -174, 7, 20, 14);                                // shoulders with fur tufts
+  for (const s of [-1, 1]) {                                                                                   // arms
+    let ex, ey, fx, fy;
+    if (hang) { ex = s * 78; ey = -200; fx = s * 18; fy = -246; }
+    else if (roar) { ex = s * 96; ey = -196; fx = s * 86; fy = -238 + Math.sin(t * 24 + s) * 5; }
+    else if (fall) { ex = s * 98; ey = -170; fx = s * 96; fy = -216 + Math.sin(t * 20 + s) * 14; }
+    else { const on = s === side ? beat : 0; ex = lerp(s * 96, s * 86, on); ey = lerp(-110, -128, on); fx = lerp(s * 86, s * 20, on); fy = lerp(-58, -124, on); }
+    limb(s * 62, -154, ex, ey, 34); limb(ex, ey, fx, fy, 40);
+    blob(() => c.arc(fx, fy, 20, 0, TAU)); c.strokeStyle = 'rgba(0,0,0,.45)'; c.lineWidth = 1.8; c.beginPath(); for (let j = -1; j <= 1; j++) { c.moveTo(fx + j * 7, fy - 17); c.lineTo(fx + j * 7, fy - 8); } c.stroke();
+  }
+  const hy = -196 + (roar ? -6 : 0);                                                                           // head (drawn 20% larger for character)
+  c.save(); c.translate(0, hy + 14); c.scale(1.2, 1.2); c.translate(0, -(hy + 14));
+  blob(() => c.ellipse(0, hy - 18, 13, 17, 0, 0, TAU));
+  for (const s of [-1, 1]) { blob(() => c.arc(s * 26, hy + 2, 8, 0, TAU)); c.fillStyle = skin; c.beginPath(); c.arc(s * 26, hy + 2, 4, 0, TAU); c.fill(); }
+  blob(() => c.arc(0, hy, 26, 0, TAU));
+  c.strokeStyle = 'rgba(255,255,255,.28)'; c.lineWidth = 2.4; c.beginPath(); c.arc(0, hy, 22, Math.PI * 1.05, Math.PI * 1.45); c.stroke();
+  const fg = c.createLinearGradient(0, hy - 10, 0, hy + 20); fg.addColorStop(0, skinL); fg.addColorStop(1, skin);
+  blob(() => c.ellipse(0, hy + 4, 18, 19, 0, 0, TAU), fg);
+  blob(() => rr(c, -22, hy - 10, 44, 12, 6), furD);                                                              // heavy brow
+  for (const s of [-1, 1]) {
+    c.fillStyle = WHITE; c.beginPath(); c.ellipse(s * 8, hy - 3, 4.2, 3.2, 0, 0, TAU); c.fill();
+    c.fillStyle = k.flinch > 0 ? '#9FE8FF' : '#FFB347'; c.beginPath(); c.arc(s * 8, hy - 3, 2.5, 0, TAU); c.fill(); c.fillStyle = INK; c.beginPath(); c.arc(s * 8, hy - 3, 1.2, 0, TAU); c.fill();
+    c.strokeStyle = INK; c.lineWidth = 3; c.beginPath(); c.moveTo(s * 15, hy - 11); c.lineTo(s * 3, hy - 4.6); c.stroke();                      // angry brow
+  }
+  blob(() => c.ellipse(0, hy + 11, 13.5, 11, 0, 0, TAU), skinL);                                                 // muzzle
+  c.fillStyle = 'rgba(40,10,20,.8)'; for (const s of [-1, 1]) { c.beginPath(); c.ellipse(s * 3.6, hy + 7, 1.8, 2.4, s * .4, 0, TAU); c.fill(); }
+  if (roar || fall || k.flinch > 0) {
+    c.fillStyle = '#4A0F25'; c.strokeStyle = INK; c.lineWidth = 2; c.beginPath(); c.ellipse(0, hy + 16, 10.5, roar ? 9.5 : 6.5, 0, 0, TAU); c.fill(); c.stroke();
+    c.fillStyle = WHITE; poly(c, [-8, hy + 11, -5, hy + 11, -6.5, hy + 18]); poly(c, [8, hy + 11, 5, hy + 11, 6.5, hy + 18]); c.fillStyle = '#FF7A9A'; c.beginPath(); c.ellipse(0, hy + 20, 5.5, 2.6, 0, 0, TAU); c.fill();
+  } else { c.strokeStyle = INK; c.lineWidth = 2.4; c.beginPath(); c.moveTo(-9, hy + 16); c.quadraticCurveTo(0, hy + 21, 9, hy + 16); c.stroke(); }
   c.restore();
-  if (idle || k.ph === 'roar') { c.save(); c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 2; c.beginPath(); c.ellipse(k.px, 506, 70 * k.sc, 7, 0, 0, TAU); c.stroke(); c.restore(); }
-  if (k.ph === 'roar') { const on = Math.sin(t * 20) > -.3; if (on) { c.save(); c.translate(k.px, k.py - 250); c.fillStyle = '#FF4D6D'; c.strokeStyle = INK; c.lineWidth = 3; circ(c, 0, 0, 17); c.stroke(); txt(c, '!', 0, 9, `700 26px ${FONT}`, WHITE, 'center'); c.restore(); } }
+  if (k.flinch > 0) { c.fillStyle = 'rgba(190,230,255,.38)'; c.beginPath(); c.ellipse(0, -122, 82, 126, 0, 0, TAU); c.fill(); }
+  c.restore();
+  if (hang) {                                                                                                  // the drone's skid he's holding
+    c.save(); c.strokeStyle = INK; c.lineWidth = 7; c.lineCap = 'round'; c.beginPath(); c.moveTo(k.gx - 34, k.gy); c.lineTo(k.gx + 34, k.gy); c.moveTo(k.gx - 22, k.gy); c.lineTo(k.gx - 18, k.gy - 12); c.moveTo(k.gx + 22, k.gy); c.lineTo(k.gx + 18, k.gy - 12); c.stroke();
+    c.strokeStyle = '#C9D3F0'; c.lineWidth = 3.4; c.stroke(); c.restore();
+  }
+  if (idle || k.ph === 'roar') { c.save(); c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 2; c.beginPath(); c.ellipse(k.px, 506, 74 * k.sc, 7, 0, 0, TAU); c.stroke(); c.restore(); }
+  if (k.ph === 'roar') { const on = Math.sin(t * 20) > -.3; if (on) { c.save(); c.translate(k.px, k.py - 262); c.fillStyle = '#FF4D6D'; c.strokeStyle = INK; c.lineWidth = 3; circ(c, 0, 0, 17); c.stroke(); txt(c, '!', 0, 9, `700 26px ${FONT}`, WHITE, 'center'); c.restore(); } }
 }
 function drawKong(c, t) { const k = G.hz.kong; if (k) drawApe(c, t, k); }
 function drawCannon(c, t) {

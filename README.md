@@ -37,7 +37,7 @@ Everything lives in `levelCfg()` and `CONFIG` at the top of `index.html`.
 - Levels 1-3: gentle. One to two parcels in flight, slow fall. Level 4 brings the pelican, seagulls and your water cannon.
 - Level 6 onward: it bites. Wind gusts, then mixed fall speeds (7), bombs (10), rapid double drops (18), a slippery deck (25) and flickering stealth parcels (35).
 - The drone never plans an impossible drop: it checks that the van can reach each parcel in time (`violation()`).
-- Delivery target per level: `14 + floor(level * 0.8)` (14 at level 1, 60 at most), so a level takes roughly a minute. Difficulty peaks around level 45-50, then eases off: level 55 onward plays about like level 30, and bosses after level 50 are milder and rarer (60, 70, 75). A heart drops about every 12 deliveries while you are down a life. Stars: 3 for no lives lost, 2 for one, 1 otherwise.
+- Delivery target per level: `14 + floor(level * 0.8)` (14 at level 1, 48 at most), so a level takes roughly a minute. Difficulty peaks around level 45-50, then eases off: level 55 onward plays about like level 30, and bosses after level 50 are milder and rarer (60, 70, 75). A heart drops about every 12 deliveries while you are down a life. Stars: 3 for no lives lost, 2 for one, 1 otherwise.
 
 The pelican strikes every 14-22 s early on and every 4-16 s late (`pelGap`), and from level 10 both the pelican and the seagulls come about 25-40% more often (`birdGap()`), easing off again after level 50. From level 4 about half its events are parcel snatches (rising to 75%), and from level 15 a snatch can chain into a second parcel. Fish runs drop one fish, then two from level 8 and three from level 20. A parcel already over the van when the pelican reaches it is saved.
 
@@ -45,7 +45,7 @@ Hazards, all tunable in `levelCfg()` and `hzGap()`: seagulls that knock parcels 
 
 **Water cannon.** From level 4 a SPRAY button (Space, W or Up on a keyboard) fires a 3-shot tank that refills every 5 s. It auto-aims at the pelican, a seagull near a parcel, the rogue drone or the ape. During TURBO it fires automatically with no limit.
 
-**Boss ape.** On every fifth level from 20 to 50 (then 60, 70, 80 and 86, gentler) a giant ape wades in from the sea, roars, leaps onto the drone and shakes it for a few seconds, so parcels drop at angles. Spraying him makes him let go sooner.
+**Boss ape.** On every fifth level from 20 to 50 (then 60, 70, 80 and 86, gentler) a giant ape wades in from the sea, roars, leaps up and grabs the drone's skid. He hangs there swinging like a pendulum with random lurches, dragging the drone from side to side, and parcels leave with the drone's sideways speed, so their angle is hard to predict. Spraying him makes him let go sooner.
 
 Extras: golden parcels (+50), heart (+1 life), slow-mo and magnet bubbles.
 
