@@ -160,7 +160,7 @@ button:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
           <div class="stat"><span>Score</span><b id="c-score">0</b></div>
           <div class="stat"><span>Bonus</span><b id="c-bonus">0</b></div>
           <div class="stat"><span>Best combo</span><b id="c-combo">0</b></div>
-          <div class="stat"><span>Big vans</span><b id="c-big">0</b></div>
+          <div class="stat"><span>Fire trucks</span><b id="c-big">0</b></div>
         </div>
         <button class="card unlock" data-act="garage" id="c-unlock" hidden></button>
         <button class="btn big" data-act="next" id="c-next">Next level</button>
@@ -178,7 +178,7 @@ button:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
           <div class="stat"><span>Best</span><b id="o-best">0</b></div>
           <div class="stat"><span>Caught</span><b id="o-caught">0</b></div>
           <div class="stat"><span>Best combo</span><b id="o-combo">0</b></div>
-          <div class="stat"><span>Big vans</span><b id="o-big">0</b></div>
+          <div class="stat"><span>Fire trucks</span><b id="o-big">0</b></div>
           <div class="stat"><span>Reached</span><b id="o-lv">LV 1</b></div>
         </div>
         <button class="btn big" data-act="retry">Try again</button>
@@ -387,7 +387,7 @@ function palette(info) {
 }
 
 /* ---- difficulty: gentle to level 5, then it bites ---- */
-const fallBase = L => L <= 5 ? 120 + 15 * (L - 1) : Math.min(400, 180 + 8 * (L - 5));
+const fallBase = L => L <= 5 ? 120 + 15 * (L - 1) : Math.min(360, 180 + 7 * (L - 5));
 function levelCfg(L) {
   const base = fallBase(L), next = fallBase(Math.min(CONFIG.levels.total, L + 1));
   return {
@@ -401,19 +401,26 @@ function levelCfg(L) {
     snatchP: L >= 4 ? Math.min(.75, .5 + (L - 4) * .01) : 0,   // chance an event is a snatch rather than fish
     fishVolley: 1 + (L >= 8 ? 1 : 0) + (L >= 20 ? 1 : 0),      // fish dropped per fish run
     chain: L >= 15 ? .4 : 0,                                    // chance a successful snatch goes for a second parcel
-    wind: L >= 6 ? Math.min(80, 18 + (L - 6) * 1.6) : 0,
-    spread: L >= 7 ? .10 + Math.min(.1, (L - 7) * .003) : 0,
+    // hazards: [min,max] seconds between spawns, or null when not yet introduced
+    gull: L >= 4 ? [Math.max(9, 14 - (L - 4) * .12), Math.max(14, 22 - (L - 4) * .18)] : null,   // seagulls knock parcels sideways
+    gullN: 1 + (L >= 25 ? 1 : 0),
+    oil: L >= 8 ? [Math.max(9, 14 - (L - 8) * .1), Math.max(13, 20 - (L - 8) * .15)] : null,     // oil slicks make the van skid
+    bolt: L >= 14 ? [Math.max(10, 16 - (L - 14) * .15), Math.max(15, 24 - (L - 14) * .2)] : null, // lightning stuns the van
+    fog: L >= 22 ? [Math.max(12, 20 - (L - 22) * .25), Math.max(18, 28 - (L - 22) * .3)] : null,  // fog banks hide parcels
+    wind: L >= 6 ? Math.min(60, 18 + (L - 6) * 1.2) : 0,
+    spread: L >= 7 ? .10 + Math.min(.06, (L - 7) * .002) : 0,
     gold: L >= 2 ? .06 : 0,
     power: L >= 3 ? .09 : 0,
     bomb: L >= 10 ? Math.min(.15, .05 + (L - 10) * .0025) : 0,
-    burst: L >= 18 ? Math.min(.35, .12 + (L - 18) * .007) : 0,
-    slip: L >= 25 ? Math.min(.3, .12 + (L - 25) * .008) : 0,   // seconds for the van to reach full speed
+    burst: L >= 18 ? Math.min(.25, .12 + (L - 18) * .005) : 0,
+    slip: L >= 25 ? Math.min(.2, .1 + (L - 25) * .005) : 0,   // seconds for the van to reach full speed
     flicker: L >= 35
   };
 }
 const INTRO = { 1: 'Slide the van under the parcels', 2: 'New: golden parcels are worth 50', 3: 'New: pelican fish decoys & power-ups',
-  4: 'New: the pelican snatches parcels', 6: 'Things get serious: wind gusts', 7: 'Parcels now fall at different speeds',
-  10: 'New: bombs! Never catch the dark ones', 18: 'New: rapid-fire double drops', 25: 'New: slippery deck', 35: 'New: stealth parcels flicker' };
+  4: 'New: pelican snatches & seagulls knock parcels', 6: 'Things get serious: wind gusts', 7: 'Parcels now fall at different speeds',
+  8: 'New: oil slicks make the van skid', 10: 'New: bombs! Never catch the dark ones', 14: 'New: lightning. Stay out of the glow', 18: 'New: rapid-fire double drops',
+  22: 'New: fog banks hide the parcels', 25: 'New: slippery deck', 35: 'New: stealth parcels flicker' };
 
 /* ------------------------------ BACKGROUND ART -------------------------- */
 const HZ = CONFIG.scene.horizon;
@@ -771,6 +778,45 @@ function drawVan(c, len, dir, rot, glowCol, veh, t = 0) {
   }
   c.restore();
 }
+/* Fire-truck bonus form (replaces the big van): a firefighter holds a wide rescue net. Same catch bin height and width as before. */
+function drawFireTruck(c, len, dir, rot, t, pulse) {
+  c.save(); c.scale(dir, 1); const h = len / 2, cab = 32, RED = '#E5352F', RED_D = '#B3231F';
+  c.fillStyle = 'rgba(0,0,0,.22)'; c.beginPath(); c.ellipse(0, 1, h * .95, 4, 0, 0, TAU); c.fill();
+  glow(c, 0, -34, h + 40, CYAN, .3);
+  c.lineJoin = 'round'; c.lineCap = 'round'; c.lineWidth = 3; c.strokeStyle = INK;
+  c.fillStyle = RED; rr(c, -h, -52, len - cab + 6, 42, 8); c.fill(); c.stroke();
+  c.beginPath(); c.moveTo(h - cab, -46); c.lineTo(h - 12, -46); c.quadraticCurveTo(h - 3, -44, h, -30); c.lineTo(h, -10); c.lineTo(h - cab, -10); c.closePath(); c.fill(); c.stroke();
+  c.fillStyle = '#1B2A66'; poly(c, [h - cab + 6, -40, h - 13, -40, h - 6, -28, h - cab + 6, -28]);
+  c.fillStyle = 'rgba(255,255,255,.3)'; poly(c, [h - cab + 8, -39, h - 22, -39, h - 26, -29, h - cab + 8, -29]);
+  c.fillStyle = WHITE; c.fillRect(-h + 3, -34, len - cab - 1, 5);
+  c.lineWidth = 1.6; for (let x = -h + 8; x < h - cab - 28; x += 40) { c.fillStyle = RED_D; rr(c, x, -27, 32, 13, 2); c.fill(); c.stroke(); c.fillStyle = AMBER_L; c.fillRect(x + 13, -22, 6, 3); }
+  c.lineWidth = 3;
+  const on = Math.sin(t * 14) > 0; c.fillStyle = on ? '#4FA6FF' : RED; c.fillRect(h - cab + 5, -55, 10, 8); c.fillStyle = on ? RED : '#4FA6FF'; c.fillRect(h - cab + 15, -55, 10, 8);
+  c.lineWidth = 1.6; c.strokeRect(h - cab + 5, -55, 20, 8); glow(c, h - cab + 15, -51, 24, on ? '#4FA6FF' : '#FF5C5C', .45); c.lineWidth = 3;
+  c.fillStyle = AMBER_L; circ(c, h - 3, -17, 3); c.fillStyle = '#C9D3F0'; c.fillRect(h - 4, -12, 8, 4);
+  for (const wx of [-h + 24, -h + 62, h - 20]) {
+    c.fillStyle = INK; circ(c, wx, -9, 10); c.fillStyle = '#9AA3D6'; circ(c, wx, -9, 4.5);
+    c.strokeStyle = INK; c.lineWidth = 1.5; c.beginPath(); c.moveTo(wx + Math.cos(rot) * 4, -9 + Math.sin(rot) * 4); c.lineTo(wx - Math.cos(rot) * 4, -9 - Math.sin(rot) * 4); c.stroke(); c.lineWidth = 3;
+  }
+  const x0 = -h + 6, x1 = h - cab - 4, mid = (x0 + x1) / 2, cx = clamp(mid, x0 + 20, x1 - 20), bend = pulse * 5;
+  c.save(); c.translate(cx, -52 + bend); c.lineWidth = 2.2;                       // the firefighter
+  c.fillStyle = '#2A2F5E'; rr(c, -7, -16, 6, 16, 2); c.fill(); c.stroke(); rr(c, 1, -16, 6, 16, 2); c.fill(); c.stroke();
+  c.fillStyle = '#FFD23F'; rr(c, -10, -37, 20, 25, 6); c.fill(); c.stroke(); c.fillStyle = '#EDEFFF'; c.fillRect(-9.5, -27, 19, 3);
+  for (const s of [-1, 1]) { c.strokeStyle = INK; c.lineWidth = 8; c.beginPath(); c.moveTo(s * 9, -32); c.lineTo(s * 20, -14 - pulse * 4); c.stroke();
+    c.strokeStyle = '#FFD23F'; c.lineWidth = 4.6; c.beginPath(); c.moveTo(s * 9, -32); c.lineTo(s * 20, -14 - pulse * 4); c.stroke(); c.fillStyle = '#2A2F5E'; circ(c, s * 20, -14 - pulse * 4, 3.4); }
+  c.strokeStyle = INK; c.lineWidth = 2.2; c.fillStyle = '#F3C9A0'; circ(c, 0, -45, 7.2); c.stroke();
+  c.fillStyle = RED; c.beginPath(); c.arc(0, -47, 8.6, Math.PI, 0); c.fill(); c.stroke(); c.fillStyle = '#FFD23F'; c.fillRect(-11, -47.5, 22, 3); c.fillStyle = WHITE; circ(c, 0, -53, 2.2);
+  c.fillStyle = INK; circ(c, -2.8, -43.5, 1.1); circ(c, 2.8, -43.5, 1.1);
+  if (pulse > .15) { c.beginPath(); c.ellipse(0, -40, 2.4, 2.6, 0, 0, TAU); c.fill(); } else { c.lineWidth = 1.4; c.beginPath(); c.arc(0, -41.5, 2.8, .15, Math.PI - .15); c.stroke(); }
+  c.restore();
+  const sag = 12 + pulse * 10;                                                    // rescue net
+  c.beginPath(); c.moveTo(x0, -66); c.quadraticCurveTo(mid, -66 + sag * 2, x1, -66); c.closePath(); c.fillStyle = 'rgba(61,240,224,.34)'; c.fill();
+  c.save(); c.clip(); c.strokeStyle = 'rgba(255,255,255,.65)'; c.lineWidth = 1; c.beginPath();
+  for (let k = x0 - 30; k < x1 + 30; k += 9) { c.moveTo(k, -66); c.lineTo(k + 18, -66 + sag + 6); c.moveTo(k + 18, -66); c.lineTo(k, -66 + sag + 6); } c.stroke(); c.restore();
+  c.strokeStyle = WHITE; c.lineWidth = 2.2; c.beginPath(); c.moveTo(x0, -66); c.quadraticCurveTo(mid, -66 + sag * 2, x1, -66); c.stroke();
+  c.strokeStyle = INK; c.lineWidth = 3; c.fillStyle = '#FFD23F'; rr(c, x0 - 3, -69, x1 - x0 + 6, 6, 3); c.fill(); c.stroke(); c.fillStyle = CYAN; circ(c, x0 - 1, -66, 3.4); circ(c, x1 + 1, -66, 3.4);
+  c.restore();
+}
 function drawDrone(c, t, tilt) {
   c.save(); c.rotate(tilt); c.lineCap = 'round'; c.lineJoin = 'round';
   for (const s of [-1, 1]) {
@@ -848,6 +894,7 @@ const G = {
   parcels: [], fish: [], fx: [], pops: [], ids: 0, time: 0,
   drone: { x: 195, y: CONFIG.drone.y, tilt: 0, cool: 1, next: null },
   pel: { ph: 'perch', t: 10, ev: null, x: CONFIG.pelican.perchX, y: CONFIG.pelican.perchY, tgt: null, flap: 0, carry: false, fx: 0, fy: 0 },
+  hz: { gulls: [], oil: [], bolts: [], fog: [], t: {} }, stunT: 0, catchPulse: 0,
   wind: 0, windT: 2, windTarget: 0, slowT: 0, magnetT: 0, banner: 0, bannerTitle: '', bannerSub: '', bannerTip: '',
   shake: 0, flash: 0, flashCol: '255,92,138', endT: 0, stats: { caught: 0, bestCombo: 0, big: 0 }, bonus: 0
 };
@@ -868,6 +915,8 @@ function resetField() {
     vanX: 195, vanV: 0, vanW: CONFIG.van.w, wind: 0, windT: 3, windTarget: 0, slowT: 0, magnetT: 0, shake: 0, flash: 0, bonus: 0,
     stats: { caught: 0, bestCombo: 0, big: 0 } });
   G.drone = { x: 195, y: CONFIG.drone.y, tilt: 0, cool: 1.2, next: null };
+  const hc = G.cfg; G.hz = { gulls: [], oil: [], bolts: [], fog: [], t: { gull: hc.gull ? rnd(4, 8) : 0, oil: hc.oil ? rnd(5, 9) : 0, bolt: hc.bolt ? rnd(6, 10) : 0, fog: hc.fog ? rnd(8, 13) : 0 } };
+  G.stunT = 0; G.catchPulse = 0;
   const g = G.cfg.pelGap; G.pel = { ph: 'perch', t: rnd(g[0], g[1]) * .6, ev: null, x: CONFIG.pelican.perchX, y: CONFIG.pelican.perchY, tgt: null, flap: 0, carry: false, fx: 0, fy: 0 };
 }
 function startLevel(L, mode) {
@@ -941,7 +990,9 @@ function updateVan(dt) {
     const dir = (inp.left ? -1 : 0) + (inp.right ? 1 : 0);
     if (dir) desired = dir * v.speed; else if (inp.dragX != null) desired = clamp((inp.dragX - G.vanX) * 10, -v.speed * 1.4, v.speed * 1.4);
   }
-  const acc = cfg.slip ? v.speed / cfg.slip : v.speed / .05;
+  const oil = G.hz.oil.some(o => Math.abs(G.vanX - o.x) < o.w / 2), slipT = Math.max(cfg.slip || 0, oil ? .45 : 0);
+  const acc = slipT ? v.speed / slipT : v.speed / .05;
+  if (G.stunT > 0) { G.stunT -= dt; desired = 0; G.vanV = 0; }
   G.vanV += clamp(desired - G.vanV, -acc * dt, acc * dt); G.vanX += G.vanV * dt;
   const half = G.vanW / 2 + v.margin; if (G.vanX < half) { G.vanX = half; G.vanV = 0; } else if (G.vanX > W - half) { G.vanX = W - half; G.vanV = 0; }
   if (Math.abs(G.vanV) > 12) G.vanDir = Math.sign(G.vanV);
@@ -959,7 +1010,8 @@ function updateItems(dt) {
   for (const arr of [G.parcels, G.fish]) for (const p of arr) {
     if (p.dead) continue;
     if (p.caught) { p.ct += dt; const k = Math.min(1, p.ct / .14); p.x = lerp(p.cx0, G.vanX, k); p.y = lerp(p.cy0, bin - 4, k); p.s = 1 - .4 * k; if (k >= 1) p.dead = true; continue; }
-    p.y += p.vy * dt; if (!p.passed) p.x = clamp(p.x + G.wind * dt * p.wk, 16, W - 16);
+    p.y += p.vy * dt;
+    if (!p.passed) { p.vx = (p.vx || 0) * (1 - Math.min(1, dt * 1.6)); p.x = clamp(p.x + (G.wind * p.wk + p.vx) * dt, 16, W - 16); }
     if (!p.passed && p.y + p.h / 2 >= bin) {
       p.passed = true;
       if (Math.abs(p.x - G.vanX) <= catchHalf()) { p.caught = true; p.ct = 0; p.cx0 = p.x; p.cy0 = p.y; onCatch(p); }
@@ -986,7 +1038,7 @@ function onCatch(p) {
       G.score += pts; G.deliveries++; G.stats.caught++; G.streak++; G.stats.bestCombo = Math.max(G.stats.bestCombo, G.streak);
       pop('+' + pts, x, y - 24, p.kind === 'gold' ? AMBER_L : WHITE); sparks(x, y - 6, p.kind === 'gold' ? 12 : 6, p.kind === 'gold' ? [AMBER_L, WHITE] : [AMBER, CYAN]);
       Sfx.play(p.kind === 'gold' ? 'gold' : 'catch');
-      if (!big) { G.combo++; if (G.combo >= CONFIG.combo.toBig) startBig(); }
+      if (!big) { G.combo++; if (G.combo >= CONFIG.combo.toBig) startBig(); } else G.catchPulse = 1;
       if (!G.demo && G.deliveries >= G.cfg.quota) levelClear();
     } break;
     case 'heart': G.lives = Math.min(CONFIG.lives, G.lives + 1); pop('+1 LIFE', x, y - 24, '#FF8FB0'); sparks(x, y - 6, 10, [PINK, WHITE]); Sfx.play('power'); break;
@@ -998,7 +1050,7 @@ function onCatch(p) {
 }
 function startBig() {
   G.bigT = CONFIG.combo.bigSeconds; G.combo = 0; G.stats.big++; Sfx.play('big');
-  pop('BIG VAN!', G.vanX, binLine() - 48, CYAN, 30); sparks(G.vanX, binLine(), 24, [CYAN, WHITE, AMBER_L]);
+  pop('FIRE TRUCK!', G.vanX, binLine() - 60, '#FF8F7A', 30); sparks(G.vanX, binLine(), 24, [CYAN, WHITE, AMBER_L]);
 }
 function snatchTarget() { let t = null; for (const p of G.parcels) if (!p.passed && catchable(p.kind) && (!t || p.y > t.y)) t = p; return t; }
 function updatePelican(dt) {
@@ -1051,12 +1103,42 @@ function sparks(x, y, n, cols) { if (REDUCED) n = Math.ceil(n / 3); for (let i =
 function splash(x, y) { sparks(x, y, 6, ['#BFE6FF', WHITE]); G.fx.push({ type: 'ring', x, y, r: 4, vr: 60, life: .6, max: .6, col: '#BFE6FF' }); }
 function pop(text, x, y, col, size) { G.pops.push({ text, x: clamp(x, 40, W - 40), y, col, size: size || 18, life: .9, max: .9 }); }
 
+/* ---- hazards (level 4+): seagulls, oil slicks, lightning, fog ---- */
+function updateHazards(dt) {
+  const cfg = G.cfg, h = G.hz, active = G.banner <= .6 && (G.state === 'playing' || G.demo);
+  const tick = (k, gap, fn) => { if (!gap) return; h.t[k] -= dt; if (h.t[k] <= 0) { if (active) fn(); h.t[k] = rnd(gap[0], gap[1]); } };
+  tick('gull', cfg.gull, () => { const dir = Math.random() < .5 ? 1 : -1, y0 = rnd(250, 460);
+    for (let i = 0; i < cfg.gullN; i++) h.gulls.push({ id: ++G.ids, x: dir > 0 ? -30 - i * 46 : W + 30 + i * 46, y: y0 + rnd(-22, 22) + i * 10, vx: dir * rnd(110, 170), dir, flap: rnd(0, 6), hit: new Set() }); });
+  tick('oil', cfg.oil, () => h.oil.push({ x: rnd(50, 340), w: rnd(64, 90), life: 7, max: 7 }));
+  tick('bolt', cfg.bolt, () => h.bolts.push({ x: clamp(G.vanX + rnd(-70, 70), 45, 345), t: 1.1, struck: false, age: 0, pts: null }));
+  tick('fog', cfg.fog, () => { const dir = Math.random() < .5 ? 1 : -1; h.fog.push({ x: dir > 0 ? -100 : W + 100, y: rnd(270, 380), w: rnd(160, 230), vx: dir * rnd(25, 45) }); });
+  for (const g of h.gulls) {
+    g.x += g.vx * dt; g.flap += dt * 11;
+    for (const p of G.parcels.concat(G.fish)) if (!p.passed && !p.caught && !g.hit.has(p.id) && Math.abs(p.x - g.x) < 24 && Math.abs(p.y - g.y) < 20) {
+      g.hit.add(p.id); p.vx = (p.vx || 0) + g.dir * 95; sparks(p.x, p.y, 6, [WHITE, '#C9D3F0']); }
+  }
+  h.gulls = h.gulls.filter(g => g.x > -120 && g.x < W + 120);
+  for (const o of h.oil) o.life -= dt; h.oil = h.oil.filter(o => o.life > 0);
+  for (const b of h.bolts) {
+    b.age += dt; b.t -= dt;
+    if (!b.struck && b.t <= 0) {
+      b.struck = true; b.age = 0; b.pts = []; let x = b.x + rnd(-30, 30); for (let y = 0; y < 706; y += 58) { b.pts.push([x, y]); x += rnd(-22, 22); } b.pts.push([b.x, 708]);
+      G.flash = Math.max(G.flash, .7); G.flashCol = '255,255,255'; G.shake = REDUCED ? 0 : .25; Sfx.play('bomb');
+      if (G.state === 'playing' && Math.abs(G.vanX - b.x) < 34 + G.vanW * .3) { G.stunT = 1; sparks(G.vanX, binLine(), 18, ['#FFE27D', WHITE, CYAN]); pop('ZAPPED', G.vanX, binLine() - 30, '#FFE27D'); }
+    }
+  }
+  h.bolts = h.bolts.filter(b => !b.struck || b.age < .4);
+  for (const f of h.fog) f.x += f.vx * dt; h.fog = h.fog.filter(f => f.x > -140 && f.x < W + 140);
+}
+const inFog = (x, y) => G.hz.fog.some(f => Math.abs(x - f.x) < f.w / 2 && Math.abs(y - f.y) < 60);
+
 function update(dt) {
   G.time += dt;
   if (G.state === 'playing' || G.demo) {
     const ts = G.slowT > 0 ? CONFIG.powers.slowFactor : 1, sdt = dt * ts;
     if (G.banner > 0) G.banner -= dt;
-    updateVan(dt); updateWind(sdt); updateDrone(sdt); updateItems(sdt); updatePelican(sdt);
+    updateVan(dt); updateWind(sdt); updateDrone(sdt); updateItems(sdt); updatePelican(sdt); updateHazards(sdt);
+    G.catchPulse = Math.max(0, G.catchPulse - dt * 4);
     if (G.bigT > 0) G.bigT = Math.max(0, G.bigT - dt);
     G.slowT = Math.max(0, G.slowT - dt); G.magnetT = Math.max(0, G.magnetT - dt);
   } else if (G.state === 'clear' || G.state === 'over') {
@@ -1093,16 +1175,18 @@ function drawDeck(c, t) {
   for (let x = 19; x < W; x += 39) { if (P.lights > .25) glow(c, x, S.deckY + 14, 12, CYAN, .5); circ(c, x, S.deckY + 14, 2.4, P.lights > .25 ? CYAN : '#6c75b8'); }
 }
 function drawVanNow(c, t) {
-  const sc = vanScale(), big = G.bigT > 0;
+  const sc = vanScale(), big = G.bigT > 0 || G.vanW > CONFIG.van.w + 6;
   c.save(); c.translate(G.vanX, CONFIG.scene.deckY); c.scale(sc, sc);
-  const gc = big ? CYAN : G.magnetT > 0 ? '#A66BFF' : null;
-  drawVan(c, G.vanW / sc, G.vanDir, G.wheel, gc, curVeh(), t); c.restore();
+  if (big) drawFireTruck(c, G.vanW / sc, G.vanDir, G.wheel, t, G.catchPulse);
+  else drawVan(c, G.vanW / sc, G.vanDir, G.wheel, G.magnetT > 0 ? '#A66BFF' : null, curVeh(), t);
+  c.restore();
   if (G.magnetT > 0) { const r = catchHalf(); c.save(); c.strokeStyle = 'rgba(166,107,255,.8)'; c.lineWidth = 2; c.setLineDash([5, 5]); c.lineDashOffset = -t * 30;
     c.beginPath(); c.moveTo(G.vanX - r, binLine()); c.lineTo(G.vanX + r, binLine()); c.stroke(); c.restore(); }
 }
 function drawEntity(c, p, t) {
   c.save(); c.translate(p.x, p.y); const sc = p.s; c.scale(sc, sc); c.rotate(Math.sin(t * 3 + p.id) * .12);
   if (G.cfg.flicker && !p.passed && p.y > 330) c.globalAlpha = .28 + .72 * Math.abs(Math.sin(t * 7 + p.id));
+  if (!p.passed && G.hz.fog.length && inFog(p.x, p.y)) c.globalAlpha *= .18;
   drawItem(c, p.kind, t); c.restore();
 }
 function drawPelicanNow(c, t) {
@@ -1132,7 +1216,7 @@ function drawHUD(c, t) {
   c.fillStyle = WHITE; rr(c, 187.5, 34, 5.5, 20, 2); c.fill(); rr(c, 197.5, 34, 5.5, 20, 2); c.fill();
   glass(c, 242, 20, 132, 48); txt(c, 'LIVES', 254, 38, `700 10px ${FONT}`, LABEL);
   for (let i = 0; i < CONFIG.lives; i++) drawParcelIcon(c, 274 + i * 36, 53, .62, i < G.lives);
-  txt(c, G.bigT > 0 ? 'BIG VAN' : 'COMBO', 16, 104, `700 10px ${FONT}`, G.bigT > 0 ? CYAN : LABEL);
+  txt(c, G.bigT > 0 ? 'FIRE TRUCK' : 'COMBO', 16, 104, `700 10px ${FONT}`, G.bigT > 0 ? CYAN : LABEL);
   if (G.bigT > 0) { rr(c, 16, 110, 116, 14, 7); c.fillStyle = 'rgba(11,16,48,.78)'; c.fill(); rr(c, 18, 112, Math.max(6, 112 * G.bigT / CONFIG.combo.bigSeconds), 10, 5); c.fillStyle = CYAN; c.fill();
     txt(c, G.bigT.toFixed(1) + 's', 137, 122, `700 10px ${MONO}`, CYAN); }
   else for (let i = 0; i < CONFIG.combo.toBig; i++) { rr(c, 16 + i * 26, 110, 22, 14, 4); c.fillStyle = i < G.combo ? CYAN : 'rgba(11,16,48,.78)'; c.fill(); c.strokeStyle = i < G.combo ? WHITE : 'rgba(255,255,255,.2)'; c.lineWidth = 1.2; c.stroke(); }
@@ -1154,6 +1238,37 @@ function drawHUD(c, t) {
     c.restore();
   }
 }
+function drawGull(c, g) {
+  c.save(); c.translate(g.x, g.y); c.scale(g.dir, 1); const f = Math.sin(g.flap) * 9; c.lineCap = 'round'; c.lineJoin = 'round';
+  const wings = () => { c.beginPath(); c.moveTo(-1, 0); c.quadraticCurveTo(-10, -10 - f, -23, -3 + f * .5); c.moveTo(1, 0); c.quadraticCurveTo(10, -10 - f, 23, -3 + f * .5); c.stroke(); };
+  c.strokeStyle = INK; c.lineWidth = 6; wings(); c.strokeStyle = WHITE; c.lineWidth = 3; wings();
+  c.fillStyle = WHITE; c.strokeStyle = INK; c.lineWidth = 2; c.beginPath(); c.ellipse(0, 1, 9, 5, 0, 0, TAU); c.fill(); c.stroke(); circ(c, 8, -1, 3.6, WHITE); c.stroke();
+  c.fillStyle = AMBER; poly(c, [11, -2, 17, 0, 11, 1]); c.fillStyle = INK; circ(c, 9, -2, .9); c.restore();
+}
+function drawHazardsLow(c, t) {
+  const S = CONFIG.scene, h = G.hz;
+  for (const o of h.oil) { const a = Math.min(1, o.life * 1.5, (o.max - o.life) * 3); c.save(); c.globalAlpha = a * .92;
+    c.fillStyle = '#120C2A'; c.beginPath(); c.ellipse(o.x, S.deckY + 7, o.w / 2, 6, 0, 0, TAU); c.fill();
+    const g = c.createLinearGradient(o.x - o.w / 2, 0, o.x + o.w / 2, 0); g.addColorStop(0, 'rgba(255,92,138,.5)'); g.addColorStop(.5, 'rgba(61,240,224,.5)'); g.addColorStop(1, 'rgba(181,139,255,.5)');
+    c.fillStyle = g; c.beginPath(); c.ellipse(o.x - 4, S.deckY + 6, o.w / 2 - 8, 2.4, 0, 0, TAU); c.fill(); c.restore(); }
+  for (const b of h.bolts) if (!b.struck) {
+    const zh = 34 + G.vanW * .3, p = .5 + .5 * Math.sin(t * 22); c.save();
+    const g = c.createLinearGradient(0, 0, 0, S.deckY); g.addColorStop(0, 'rgba(255,226,125,0)'); g.addColorStop(1, `rgba(255,226,125,${.1 + .1 * p})`); c.fillStyle = g; c.fillRect(b.x - zh, 0, zh * 2, S.deckY);
+    c.fillStyle = `rgba(255,226,125,${.3 + .3 * p})`; c.strokeStyle = '#FFE27D'; c.lineWidth = 2; c.beginPath(); c.ellipse(b.x, S.deckY + 6, zh, 7, 0, 0, TAU); c.fill(); c.stroke();
+    poly(c, [b.x + 3, S.deckY - 26, b.x - 7, S.deckY - 8, b.x - 1, S.deckY - 8, b.x - 4, S.deckY + 4, b.x + 7, S.deckY - 14, b.x + 1, S.deckY - 14], '#FFE27D'); c.restore();
+  }
+}
+function drawHazardsHigh(c, t) {
+  const h = G.hz;
+  for (const g of h.gulls) drawGull(c, g);
+  for (const b of h.bolts) if (b.struck && b.pts) { const a = 1 - b.age / .4; c.save(); c.globalAlpha = a; c.lineJoin = 'round';
+    c.strokeStyle = 'rgba(255,226,125,.55)'; c.lineWidth = 12; c.beginPath(); b.pts.forEach((q, i) => i ? c.lineTo(q[0], q[1]) : c.moveTo(q[0], q[1])); c.stroke();
+    c.strokeStyle = WHITE; c.lineWidth = 4; c.stroke(); c.restore(); }
+  for (const f of h.fog) { c.save(); for (let i = 0; i < 5; i++) { const fx = f.x + (i - 2) * f.w / 5, fy = f.y + Math.sin(t * .6 + i * 1.7) * 6, r = f.w / 3.2; const g = c.createRadialGradient(fx, fy, 0, fx, fy, r);
+    g.addColorStop(0, 'rgba(235,240,255,.62)'); g.addColorStop(1, 'rgba(235,240,255,0)'); c.fillStyle = g; c.fillRect(fx - r, fy - r, r * 2, r * 2); } c.restore(); }
+  if (G.stunT > 0) { c.save(); c.strokeStyle = '#FFE27D'; c.lineWidth = 2; c.lineJoin = 'round'; const hw = G.vanW / 2, by = binLine();
+    for (let k = 0; k < 3; k++) { c.beginPath(); let x = G.vanX - hw + Math.random() * hw * 2, y = CONFIG.scene.deckY - 6; c.moveTo(x, y); for (let j = 0; j < 5; j++) { x += rnd(-9, 9); y -= (CONFIG.scene.deckY - by + 14) / 5; c.lineTo(x, y); } c.stroke(); } c.restore(); }
+}
 function render(t) {
   const c = ctx; c.setTransform(view.k, 0, 0, view.k, 0, 0); c.clearRect(0, 0, W, H);
   if (!G.bg) return;
@@ -1161,13 +1276,13 @@ function render(t) {
   drawBG(c, t); drawPelicanNow(c, t);
   for (const p of G.parcels) if (p.passed && !p.caught) drawEntity(c, p, t);
   for (const p of G.fish) if (p.passed && !p.caught) drawEntity(c, p, t);
-  drawDeck(c, t); drawVanNow(c, t);
+  drawDeck(c, t); drawHazardsLow(c, t); drawVanNow(c, t);
   for (const p of G.parcels) if (!p.passed || p.caught) drawEntity(c, p, t);
   for (const p of G.fish) if (!p.passed || p.caught) drawEntity(c, p, t);
   const d = G.drone; c.save(); c.translate(d.x, d.y); drawDrone(c, t, d.tilt); c.restore();
   if (Math.abs(G.wind) > 12 && G.state === 'playing') { c.strokeStyle = 'rgba(255,255,255,.16)'; c.lineWidth = 1.5; for (let i = 0; i < 8; i++) { const y = 230 + i * 62, x = ((t * G.wind * 2.2 + i * 97) % (W + 120) + W + 120) % (W + 120) - 60;
     c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.sign(G.wind) * 40, y); c.stroke(); } }
-  drawFx(c); c.restore();
+  drawHazardsHigh(c, t); drawFx(c); c.restore();
   if (G.state !== 'title' && !G.demo) drawHUD(c, t);
   if (G.flash > 0) { c.fillStyle = `rgba(${G.flashCol},${G.flash * .22})`; c.fillRect(0, 0, W, H); }
 }
@@ -1206,7 +1321,8 @@ function togglePause() {
 function buildHow() {
   const rows = [['van', '<b>Slide the van</b> with the buttons, arrow keys or A / D. You can drag, too.'],
     ['box', '<b>Catch parcels</b> in the roof bin. Miss one and you lose a life. You get three.'],
-    ['big', '<b>5 catches in a row</b> summons the BIG VAN for 8 seconds: wider, and every catch scores double.'],
+    ['big', '<b>5 catches in a row</b> calls in the <b>FIRE TRUCK</b> for 8 seconds: a firefighter with a giant net, and every catch scores double.'],
+    ['hazard', '<b>Hazards</b> from level 4: seagulls knock parcels off course, oil slicks make you skid, lightning zaps the van (stay out of the glow), fog hides parcels.'],
     ['pelican', 'The pelican shows a <b>!</b>, then snatches a parcel or drops a <b>decoy fish</b>. Do not catch the fish: it breaks your combo.'],
     ['gold', '<b>Golden parcels</b> score 50. <b>Bombs</b> cost a life, so let them fall into the sea.'],
     ['power', '<b>Bubbles</b> help you: heart (+1 life), clock (slow motion) and magnet (wider catch).'],
@@ -1215,7 +1331,8 @@ function buildHow() {
   document.querySelectorAll('#how-list canvas').forEach(cv3 => {
     const c = cv3.getContext('2d'), k = cv3.dataset.i; c.scale(2, 2); c.translate(32, 34);
     if (k === 'van') { c.scale(.5, .5); drawVan(c, 96, 1, 0); }
-    else if (k === 'big') { c.scale(.27, .27); c.translate(0, 8); drawVan(c, 200, 1, 0, CYAN); }
+    else if (k === 'big') { c.scale(.27, .27); c.translate(0, 8); drawFireTruck(c, 200, 1, 0, 0, 0); }
+    else if (k === 'hazard') { c.save(); c.translate(-6, 0); drawGull(c, { x: -2, y: -8, dir: 1, flap: 1 }); c.restore(); poly(c, [10, -22, 0, 0, 7, 0, 3, 18, 16, -6, 9, -6], '#FFE27D'); c.fillStyle = '#120C2A'; c.beginPath(); c.ellipse(4, 22, 20, 5, 0, 0, TAU); c.fill(); }
     else if (k === 'pelican') { c.translate(6, 20); c.scale(.55, .55); drawPelican(c, 'perch', 0, false); }
     else if (k === 'world') { c.translate(-32, -34); c.drawImage(buildBG(9, .5), 0, 95, 195, 170, 0, 0, 64, 56); }
     else if (k === 'power') { for (const [i, kd] of ['heart', 'slow', 'magnet'].entries()) { c.save(); c.translate(-14 + i * 18 + (i === 1 ? 0 : 0), i % 2 ? 8 : -6); c.scale(.55, .55); drawItem(c, kd, 0); c.restore(); } }

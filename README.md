@@ -38,6 +38,8 @@ Everything lives in `levelCfg()` and `CONFIG` at the top of `index.html`.
 
 The pelican strikes every 14-22 s early on and every 4-16 s late (`pelGap`). From level 4 about half its events are parcel snatches (rising to 75%), and from level 15 a snatch can chain into a second parcel. Fish runs drop one fish, then two from level 8 and three from level 20. A parcel already over the van when the pelican reaches it is saved.
 
+Hazards, all tunable in `levelCfg()`: seagulls that knock parcels sideways (level 4), oil slicks that make the van skid (8), lightning with a glowing warning zone that stuns the van for a second (14), and fog banks that hide parcels (22).
+
 Extras: golden parcels (+50), heart (+1 life), slow-mo and magnet bubbles.
 
 ## Garage
@@ -61,7 +63,7 @@ A static page cannot safely confirm a payment by itself, so the build ships fail
 
 ## Status against the build brief
 
-Done: modern game, all five states plus level select, level clear, paywall and victory screens, free-moving van, combo and BIG VAN, pelican snatch and fish, pause, best score persistence, reduced-motion handling.
+Done: modern game, all five states plus level select, level clear, paywall and victory screens, free-moving van, combo and the FIRE TRUCK bonus (a firefighter with a giant net, 8 s, double score, replaces the brief's BIG VAN look), pelican snatch and fish, pause, best score persistence, reduced-motion handling.
 
 Not yet: the retro Classic LCD skin (brief step 8, marked optional).
 
