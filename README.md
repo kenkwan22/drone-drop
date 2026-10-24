@@ -6,7 +6,9 @@ Single self-contained `index.html` (HTML5 canvas, no build step, no dependencies
 
 ## Run it
 
-Open `index.html` in a browser, or serve the folder:
+Play it online: https://kenkwan22.github.io/drone-drop/ (GitHub Pages, served from the `main` branch).
+
+Or open `index.html` in a browser, or serve the folder:
 
 ```bash
 npx serve .
