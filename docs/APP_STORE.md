@@ -18,9 +18,17 @@ The repo is already wrapped with [Capacitor](https://capacitorjs.com): `android/
 | RevenueCat | free tier | checks purchases for you, so nobody can fake an unlock |
 | A Mac with Xcode (or a cloud Mac such as Codemagic) | - | iOS apps can only be built with Xcode |
 
-## 2. Change the app ID first
+## 2. The app ID (a name you choose, not your email)
 
-`capacitor.config.json` has `"appId": "au.com.careerprophets.dronedrop"`. That is a guess based on your email domain. The ID becomes permanent once you create the store listings, so decide now (reverse-domain, lowercase, e.g. `com.yourname.dronedrop`), edit it, then run `npx cap sync` again. If you change it after creating `android/`, also update `namespace`/`applicationId` in `android/app/build.gradle`.
+Your **email** (your account email) is only what you sign in to Apple Developer, Google Play and RevenueCat with. The **app ID** is a different thing: a reverse-domain name that identifies the app, such as . It is not an email and nobody issues it to you: you invent it, and both stores just check that nobody else has already used it. You do not need to own a domain.
+
+ is set to **** and the  and  projects were generated with it. It becomes permanent once you create the store listings, so change it first if you want a different one: edit , delete the  and  folders, and run > drone-drop@1.0.0 build:web
+> node scripts/build-web.mjs
+
+web build copied to www/
+[error] android platform already exists.
+        To re-add this platform, first remove .android, then run this command again.
+        WARNING: Your native project will be completely removed. again. (Later the stores also show their own numbers for your app, such as Apple's numeric *Apple ID* in App Store Connect. Those are labels the store gives you, and you never type them into the project.)
 
 ## 3. Create the purchase
 

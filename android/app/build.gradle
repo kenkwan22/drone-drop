@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "au.com.careerprophets.dronedrop"
+    namespace "com.kenkwan22.dronedrop"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "au.com.careerprophets.dronedrop"
+        applicationId "com.kenkwan22.dronedrop"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
