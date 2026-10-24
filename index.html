@@ -193,8 +193,8 @@ button:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
         <h2 class="big-title">WORLD TOUR</h2>
         <div class="card">
           <ul class="list">
-            <li><b>42 more levels</b> &mdash; 9 to 50</li>
-            <li>London, Paris, Dubai, Sydney, Tokyo, China, Tropical Paradise &amp; Sky City</li>
+            <li><b id="pay-n">67 more levels</b> &mdash; <span id="pay-range">9 to 75</span></li>
+            <li>London, Paris, Los Angeles, Egypt, Dubai, Saudi Arabia, Sydney, Tokyo, Mount Fuji, China, Hawaii, the Tropics &amp; Sky City</li>
             <li>Wind, bombs, double drops and slippery decks</li>
             <li>One payment, no ads, yours for good</li>
           </ul>
@@ -209,7 +209,7 @@ button:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
 
     <section class="screen scrim center" id="s-win">
       <div class="panel">
-        <p class="kicker" style="text-align:center">All 50 levels clear</p>
+        <p class="kicker" style="text-align:center">All 75 levels clear</p>
         <h2 class="big-title">WORLD TOUR<br>COMPLETE</h2>
         <div class="stars">&#9733;&#9733;&#9733;</div>
         <div class="stats">
@@ -243,7 +243,7 @@ const CONFIG = {
   drone:   { y: 196 },
   pelican: { warn: 1, perchX: 372, perchY: 554, scale: .8, flySpeed: 560 },
   powers:  { slowSeconds: 5, slowFactor: .55, magnetSeconds: 8, magnetBonus: 26 },
-  levels:  { total: 50, free: 8 },
+  levels:  { total: 75, free: 8 },
   banner:  2.4,
   billing: {
     productId: 'drone-drop-world-tour',
@@ -354,10 +354,15 @@ const WORLDS = [
   { id: 'newyork',  name: 'New York',          len: 4 },
   { id: 'london',   name: 'London',            len: 5 },
   { id: 'paris',    name: 'Paris',             len: 5 },
+  { id: 'la',       name: 'Los Angeles',       len: 5 },
+  { id: 'egypt',    name: 'Egypt',             len: 5 },
   { id: 'dubai',    name: 'Dubai',             len: 5 },
+  { id: 'saudi',    name: 'Saudi Arabia',      len: 5 },
   { id: 'sydney',   name: 'Sydney',            len: 5 },
   { id: 'tokyo',    name: 'Tokyo',             len: 5 },
+  { id: 'fuji',     name: 'Mount Fuji',        len: 5 },
   { id: 'china',    name: 'China',             len: 5 },
+  { id: 'hawaii',   name: 'Hawaii',            len: 5 },
   { id: 'tropical', name: 'Tropical Paradise', len: 6 },
   { id: 'sky',      name: 'Sky City',          len: 6 }
 ];
@@ -377,10 +382,14 @@ const TOD = {
 
 function palette(info) {
   const t = TOD[info.tod], P = Object.assign({}, t, { sky: t.sky.slice(), tod: info.tod });
-  if (info.world.id === 'tropical') {
+  const wid = info.world.id;
+  if (wid === 'tropical' || wid === 'hawaii') {
     P.far = mix(P.far, '#2FA37A', .55); P.mid = mix(P.mid, '#1F8A5E', .55); P.near = mix(P.near, '#0E5A3C', .6);
     P.water = mix(P.water, '#16B7C4', .5); P.sky = P.sky.map(s => mix(s, '#2FB4E8', .12));
-  } else if (info.world.id === 'sky') {
+  } else if (wid === 'egypt' || wid === 'saudi') {                      // sandstone land, warmer sky, green-blue Nile / Gulf water
+    P.far = mix(P.far, '#D6A36A', .45); P.mid = mix(P.mid, '#C48A4E', .5); P.near = mix(P.near, '#8A5A32', .5);
+    P.water = mix(P.water, wid === 'egypt' ? '#2C8A92' : '#1F9AB8', .4); P.sky = P.sky.map(s => mix(s, '#FFB070', .1));
+  } else if (wid === 'sky') {
     P.far = mix(P.far, '#8E7BE8', .45); P.mid = mix(P.mid, '#6C5CD0', .45); P.near = mix(P.near, '#3E2F9A', .4);
     P.water = mix(P.water, '#7A5CD6', .4); P.sky = P.sky.map(s => mix(s, '#6A3FD0', .28)); P.stars = Math.max(P.stars, 70);
   }
@@ -391,10 +400,15 @@ function palette(info) {
 /* ---- difficulty: gentle to level 5, then it bites ---- */
 const fallBase = L => L <= 5 ? 120 + 15 * (L - 1) : Math.min(360, 180 + 7 * (L - 5));
 const hzGap = (L, a, b, fa, fb) => { const hf = L >= 7 ? Math.max(.55, 1 - (L - 6) * .03) : 1; return [Math.max(fa, a * hf), Math.max(fb, b * hf)]; };
+/* Difficulty plateaus at level 45; later levels keep that pressure but are longer and still get boss ape levels. */
+const kongCfg = L => L >= 20 && L % 5 === 0 ? { gap: [11, 17], hold: Math.min(5, 3.5 + (L - 20) / 5 * .5), dvx: Math.min(125, 85 + (L - 20) * 3) } : null;
 function levelCfg(L) {
+  const c = cfgFor(Math.min(L, 45)); c.L = L; c.quota = Math.min(60, 14 + Math.floor(L * .8)); c.kong = kongCfg(L); return c;
+}
+function cfgFor(L) {
   const base = fallBase(L), next = fallBase(Math.min(CONFIG.levels.total, L + 1));
   return {
-    L, base, quota: 8 + Math.floor(L / 2),
+    L, base, quota: Math.min(60, 14 + Math.floor(L * .8)),   // deliveries needed to clear: longer levels (14 at level 1, 60 max)
     rampMax: Math.max(6, (next - base) * .85),         // in-level ramp stays small so the level-up jump is small
     inFlight: L < 3 ? 1 : L < 9 ? 2 : 3,
     gap: Math.max(.5, 1.5 - L * .02),
@@ -417,7 +431,7 @@ function levelCfg(L) {
     bolt: L >= 9 ? hzGap(L, 16, 24, 8, 12) : null,       // lightning stuns the van
     fog: L >= 12 ? hzGap(L, 20, 28, 10, 15) : null,      // fog banks hide parcels
     // boss levels: a giant ape climbs out of the sea, leaps onto the drone and shakes it so parcels drop at angles
-    kong: [20, 25, 30, 35].includes(L) ? { gap: [11, 17], hold: 3.5 + (L - 20) / 5 * .5, dvx: 85 + (L - 20) * 3 } : null,
+    kong: kongCfg(L),
     wind: L >= 6 ? Math.min(60, 18 + (L - 6) * 1.2) : 0,
     spread: L >= 7 ? .10 + Math.min(.06, (L - 7) * .002) : 0,
     gold: L >= 2 ? .06 : 0,
@@ -470,6 +484,23 @@ function boat(c, x, y, s, col, sail) {
 }
 function lamp(c, P, x, y, r) { if (P.lights > .1) glow(c, x, y, r, LIT, .7); }
 
+function camel(c, x, y, s, col) {
+  c.save(); c.translate(x, y); c.scale(s, s); c.fillStyle = col; c.strokeStyle = col; c.lineCap = 'round';
+  c.beginPath(); c.ellipse(0, -14, 13, 6, 0, 0, TAU); c.fill(); circ(c, -1, -22, 4.4); c.lineWidth = 3.6; c.beginPath(); c.moveTo(10, -16); c.quadraticCurveTo(17, -22, 17, -31); c.stroke();
+  c.beginPath(); c.ellipse(20, -32, 5.4, 2.6, -.2, 0, TAU); c.fill(); c.lineWidth = 2; c.beginPath();
+  for (const lx of [-9, -4, 5, 10]) { c.moveTo(lx, -10); c.lineTo(lx + (lx < 0 ? -1 : 1), 0); } c.moveTo(-13, -16); c.lineTo(-17, -10); c.stroke(); c.restore();
+}
+function pagoda(c, P, x, y, s) {
+  c.save(); c.translate(x, y); c.scale(s, s); c.fillStyle = P.mid;
+  for (let i = 0; i < 5; i++) { const w = 54 - i * 8, yy = -i * 26; c.fillRect(-w / 2 + 6, yy - 22, w - 12, 22);
+    poly(c, [-w / 2 - 9, yy - 20, -w / 2 + 2, yy - 28, w / 2 - 2, yy - 28, w / 2 + 9, yy - 20, w / 2 - 2, yy - 24, -w / 2 + 2, yy - 24]); poly(c, [-w / 2 - 3, yy - 22, w / 2 + 3, yy - 22, w / 2 - 4, yy - 30, -w / 2 + 4, yy - 30]);
+    if (P.lights > .1) { c.fillStyle = LIT; c.fillRect(-2, yy - 18, 4, 7); c.fillStyle = P.mid; } }
+  c.fillRect(-.9, -154, 1.8, 24); c.restore();
+}
+function torii(c, P, x, y) {
+  const red = mix('#D9432E', P.mid, .3); c.fillStyle = red; c.fillRect(x - 20, y - 46, 5, 46); c.fillRect(x + 15, y - 46, 5, 46);
+  poly(c, [x - 30, y - 52, x + 30, y - 52, x + 24, y - 44, x - 24, y - 44]); c.fillRect(x - 22, y - 36, 44, 4);
+}
 const ART = {
   harbor(c, P, rng) {
     row(c, rng, P, { color: P.far, minW: 16, maxW: 30, minH: 14, maxH: 40, style: 'gable' });
@@ -621,6 +652,74 @@ const ART = {
         glow(c, lx, ly + 8, 22, red, P.lights > .1 ? .55 : .25); c.fillStyle = red; c.beginPath(); c.ellipse(lx, ly + 8, 6, 8, 0, 0, TAU); c.fill(); c.fillStyle = AMBER_L; c.fillRect(lx - 3, ly, 6, 2); c.fillRect(lx - 1, ly + 15, 2, 5); }
     }
   },
+  la(c, P, rng) {
+    ridge(c, rng, P.far, HZ, 48, 1.8, HZ - 6);
+    c.fillStyle = P.mid; c.beginPath(); c.moveTo(-10, HZ); c.quadraticCurveTo(60, HZ - 78, 150, HZ - 52); c.quadraticCurveTo(190, HZ - 40, 212, HZ); c.closePath(); c.fill();
+    c.save(); c.font = `700 11px ${FONT}`; if ('letterSpacing' in c) c.letterSpacing = '1.5px'; c.fillStyle = mix(WHITE, P.mid, .2); c.textAlign = 'center'; c.fillText('HOLLYWOOD', 92, HZ - 55); c.restore();   // hillside sign
+    c.save(); c.translate(150, HZ - 52); c.fillStyle = mix(P.mid, '#ffffff', .25); c.fillRect(-14, -10, 28, 10); c.beginPath(); c.arc(0, -10, 8, Math.PI, 0); c.fill();
+    c.beginPath(); c.arc(-12, -10, 4, Math.PI, 0); c.arc(12, -10, 4, Math.PI, 0); c.fill(); c.restore();                                                                // Griffith Observatory
+    row(c, rng, P, { color: P.mid, x0: 205, x1: 345, minW: 12, maxW: 22, minH: 30, maxH: 105, lit: P.lights, style: 'step' });
+    c.save(); c.translate(268, HZ); c.fillStyle = P.mid; c.fillRect(-14, -150, 28, 150); c.fillRect(-10, -170, 20, 20); c.fillRect(-6, -184, 12, 14); c.fillRect(-.8, -206, 1.6, 22);   // downtown tower
+    windows(c, P, rng, -14, -150, 28, 150, P.lights); if (P.lights > .15) { c.fillStyle = LIT; c.fillRect(-6, -184, 12, 2); } c.restore();
+    c.save(); c.translate(354, HZ + 6); c.fillStyle = P.near; c.fillRect(-56, 4, 112, 5);                                                                                        // Santa Monica pier
+    for (let x = -52; x < 54; x += 10) c.fillRect(x, 8, 2, 14);
+    c.translate(10, -28); c.strokeStyle = P.near; c.lineWidth = 2; c.beginPath(); c.arc(0, 0, 24, 0, TAU); c.stroke(); c.lineWidth = 1; c.beginPath();
+    for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; c.moveTo(0, 0); c.lineTo(Math.cos(a) * 24, Math.sin(a) * 24); } c.moveTo(0, 0); c.lineTo(-14, 30); c.moveTo(0, 0); c.lineTo(14, 30); c.stroke();
+    for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; circ(c, Math.cos(a) * 24, Math.sin(a) * 24, 2.2, P.lights > .1 ? LIT : P.near); } if (P.lights > .1) glow(c, 0, 0, 40, LIT, .3); c.restore();
+    for (const [x, h, d] of [[24, 84, 1], [118, 70, -1], [186, 78, 1], [300, 88, -1], [384, 74, 1]]) palm(c, x, HZ, h, d, P.near, P.near);
+    row(c, rng, P, { color: P.near, minW: 14, maxW: 24, minH: 6, maxH: 14 });
+  },
+  egypt(c, P, rng) {
+    ridge(c, rng, P.far, HZ, 22, 2.4, HZ - 8);
+    const lite = mix(P.mid, '#ffffff', .22), dark = mix(P.mid, '#000000', .22);
+    const pyr = (x, w, h) => { poly(c, [x - w, HZ, x, HZ - h, x, HZ], lite); poly(c, [x, HZ - h, x + w, HZ, x, HZ], dark); };
+    pyr(104, 44, 50); pyr(188, 60, 72); pyr(290, 88, 112);                                          // the Giza pyramids
+    c.save(); c.translate(52, HZ); c.fillStyle = P.mid;                                             // Sphinx
+    poly(c, [-30, 0, -30, -10, -18, -14, -4, -16, 16, -18, 34, -16, 36, -4, 34, 0]); c.fillRect(-48, -6, 20, 6); poly(c, [-28, -14, -22, -14, -20, -32, -30, -32]);
+    circ(c, -25, -36, 7); c.fillStyle = dark; poly(c, [-33, -38, -17, -38, -14, -22, -36, -22]); c.restore();
+    c.save(); c.translate(360, HZ); c.fillStyle = P.mid; poly(c, [-5, 0, 5, 0, 2.2, -118, 0, -128, -2.2, -118]); c.restore();       // obelisk
+    c.save(); c.translate(0, HZ); c.fillStyle = P.mid; for (let x = 150; x < 240; x += 18) { c.fillRect(x, -26, 7, 26); c.fillRect(x - 2, -29, 11, 4); } c.restore();         // temple columns
+    for (const [x, h, d] of [[18, 54, 1], [136, 46, -1], [334, 58, 1]]) palm(c, x, HZ, h, d, P.near, P.near);
+    ridge(c, rng, P.near, HZ + 2, 12, 3.2, HZ + 2);
+  },
+  saudi(c, P, rng) {
+    ridge(c, rng, P.far, HZ, 20, 2.2, HZ - 8);
+    row(c, rng, P, { color: P.far, x0: 70, x1: 400, minW: 12, maxW: 24, minH: 24, maxH: 90, style: 'slant', lit: P.lights * .7 });
+    row(c, rng, P, { color: P.mid, x0: 60, x1: 400, minW: 14, maxW: 26, minH: 26, maxH: 84, style: 'slant', lit: P.lights });
+    c.save(); c.translate(118, HZ); c.fillStyle = P.mid; poly(c, [-15, 0, 15, 0, 7, -150, -7, -150]);                    // Al Faisaliah: tower with golden globe
+    windows(c, P, rng, -12, -150, 24, 150, P.lights); c.fillStyle = mix('#FFD27D', P.mid, .3); circ(c, 0, -166, 12); glow(c, 0, -166, 30, '#FFD27D', P.lights > .1 ? .5 : .2);
+    c.fillStyle = 'rgba(255,255,255,.4)'; circ(c, -4, -170, 3.4); c.fillStyle = P.mid; c.fillRect(-.8, -194, 1.6, 16); c.restore();
+    c.save(); c.translate(252, HZ); c.fillStyle = P.mid; c.beginPath(); c.moveTo(-22, 0); c.lineTo(22, 0); c.lineTo(22, -198); c.lineTo(10, -198);     // Kingdom Centre: arched opening at the top
+    c.quadraticCurveTo(0, -112, -10, -198); c.lineTo(-22, -198); c.closePath(); c.fill(); c.fillRect(-11, -178, 22, 3.4);
+    windows(c, P, rng, -22, -130, 44, 130, P.lights); c.restore();
+    for (const [x, y] of [[300, HZ - 14], [326, HZ - 11], [350, HZ - 13]]) camel(c, x, y, .9, P.near);                  // camel caravan
+    for (const [x, h, d] of [[16, 50, 1], [190, 44, -1], [376, 52, -1]]) palm(c, x, HZ, h, d, P.near, P.near);
+    ridge(c, rng, P.near, HZ + 2, 12, 3, HZ + 2);
+  },
+  fuji(c, P, rng) {
+    c.save(); c.translate(195, HZ); const body = mix(P.far, P.mid, .35), snow = mix(P.far, '#ffffff', .82);
+    c.fillStyle = body; c.beginPath(); c.moveTo(-250, 0); c.quadraticCurveTo(-70, -26, -36, -228); c.lineTo(36, -228); c.quadraticCurveTo(70, -26, 250, 0); c.closePath(); c.fill();
+    c.fillStyle = snow; poly(c, [-36, -228, 36, -228, 52, -176, 34, -186, 24, -154, 10, -172, 0, -140, -10, -170, -24, -152, -34, -184, -50, -172]);
+    c.fillStyle = 'rgba(20,10,50,.15)'; c.beginPath(); c.moveTo(34, -228); c.quadraticCurveTo(70, -26, 250, 0); c.lineTo(30, 0); c.closePath(); c.fill();
+    c.fillStyle = rgba(P.cloud, P.cloudA * .8); for (const [x, y, w] of [[-90, -92, 70], [60, -70, 90], [150, -104, 60], [-10, -128, 50]]) { c.beginPath(); c.ellipse(x, y, w, 8, 0, 0, TAU); c.ellipse(x + w * .3, y - 5, w * .5, 7, 0, 0, TAU); c.fill(); }
+    c.restore();
+    ridge(c, rng, P.mid, HZ, 20, 3, HZ - 2);
+    c.save(); c.fillStyle = P.near; c.beginPath(); c.moveTo(-10, HZ); c.quadraticCurveTo(40, HZ - 60, 100, HZ - 30); c.quadraticCurveTo(130, HZ - 14, 150, HZ); c.closePath(); c.fill(); c.restore();
+    pagoda(c, P, 62, HZ - 46, .5);                                                                       // Chureito pagoda on the hill
+    const sak = mix('#F7A8C8', P.near, .22);
+    for (const [x, y, r] of [[18, HZ - 22, 17], [34, HZ - 40, 12], [320, HZ - 22, 20], [348, HZ - 30, 15], [296, HZ - 14, 14], [376, HZ - 12, 16]]) { c.fillStyle = P.near; c.fillRect(x - 1.6, y, 3.2, 22); circ(c, x, y, r, sak); circ(c, x - r * .6, y + 5, r * .7, sak); circ(c, x + r * .6, y + 4, r * .7, sak); }
+    c.fillStyle = rgba('#FFC9DE', .8); for (let i = 0; i < 40; i++) c.fillRect(rng() * W, 60 + rng() * 380, 2.4, 1.6);   // drifting petals
+    row(c, rng, P, { color: P.near, minW: 12, maxW: 22, minH: 5, maxH: 12, style: 'gable', x0: 150, x1: 290 });
+  },
+  hawaii(c, P, rng) {
+    if (P.tod === 'day' || P.tod === 'golden') { c.lineWidth = 4; ['#FF5C5C', '#FFB347', '#FFE27D', '#7DE39A', '#5CB8FF', '#A98CFF'].forEach((col, i) => { c.strokeStyle = rgba(col, .3); c.beginPath(); c.arc(260, HZ + 30, 230 - i * 4.2, Math.PI * 1.08, Math.PI * 1.7); c.stroke(); }); }
+    c.save(); c.translate(80, HZ); c.fillStyle = P.far; c.beginPath(); c.moveTo(-110, 0); c.quadraticCurveTo(-40, -24, -14, -76); c.quadraticCurveTo(10, -104, 54, -90); c.quadraticCurveTo(100, -62, 190, 0); c.closePath(); c.fill();   // Diamond Head
+    c.strokeStyle = 'rgba(0,0,0,.12)'; c.lineWidth = 3; for (let i = 0; i < 5; i++) { c.beginPath(); c.moveTo(-8 + i * 18, -90 + i * 4); c.lineTo(-24 + i * 30, -4); c.stroke(); } c.restore();
+    ridge(c, rng, P.mid, HZ, 16, 3, HZ - 2);
+    row(c, rng, P, { color: mix(P.mid, '#ffffff', .22), x0: 200, x1: 400, minW: 13, maxW: 20, minH: 40, maxH: 118, lit: P.lights });          // Waikiki hotels
+    for (const [x, h, d] of [[24, 62, 1], [112, 74, -1], [190, 54, 1], [262, 70, -1], [320, 60, 1], [372, 76, -1]]) palm(c, x, HZ, h, d, P.near, P.near);
+    c.fillStyle = mix('#F2D9A0', P.near, P.tod === 'night' ? .75 : .25); c.beginPath(); c.moveTo(-5, HZ); c.quadraticCurveTo(100, HZ - 12, 205, HZ - 4); c.quadraticCurveTo(300, HZ - 12, 395, HZ - 3); c.lineTo(395, HZ); c.closePath(); c.fill();
+  },
   tropical(c, P, rng, info) {
     if (P.tod === 'day' || P.tod === 'golden') {                       // rainbow
       c.lineWidth = 4; ['#FF5C5C', '#FFB347', '#FFE27D', '#7DE39A', '#5CB8FF', '#A98CFF'].forEach((col, i) => { c.strokeStyle = rgba(col, .32); c.beginPath(); c.arc(200, HZ + 30, 250 - i * 4.2, Math.PI * 1.05, Math.PI * 1.65); c.stroke(); });
@@ -672,6 +771,10 @@ function palm(c, x, y, h, dir, trunkCol, leafCol) {
   for (let i = 0; i < 7; i++) { const a = -Math.PI + (i / 6) * Math.PI, lx = Math.cos(a) * 24, ly = Math.sin(a) * 14; c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(lx * .6, ly - 6, lx, ly + 14); c.stroke(); }
   c.restore();
 }
+function surfer(c, P, x, y) {                                                // a surfer riding a small wave
+  c.save(); c.translate(x, y); c.fillStyle = rgba('#EAF8FF', .6); c.beginPath(); c.moveTo(-26, 8); c.quadraticCurveTo(-14, -14, 4, -8); c.quadraticCurveTo(-4, -2, 6, 8); c.closePath(); c.fill();
+  c.fillStyle = mix('#FF7A33', P.near, .2); c.beginPath(); c.ellipse(0, 3, 12, 2, -.1, 0, TAU); c.fill(); c.fillStyle = P.near; c.fillRect(-1.6, -9, 3.2, 11); circ(c, 0, -12, 3); c.restore();
+}
 const PROPS = {
   harbor(c, P) { boat(c, 120, HZ + 16, .8, P.near, mix(WHITE, P.mid, .3)); boat(c, 250, HZ + 26, 1, P.near, mix(WHITE, P.mid, .3)); boat(c, 330, HZ + 12, .6, P.near); },
   newyork(c, P) { boat(c, 150, HZ + 14, .7, P.near); boat(c, 330, HZ + 24, .9, P.near, mix(WHITE, P.mid, .3)); },
@@ -679,6 +782,17 @@ const PROPS = {
   paris(c, P) { boat(c, 110, HZ + 18, .9, P.near, mix(WHITE, P.mid, .3)); boat(c, 300, HZ + 24, .8, P.near); },
   dubai(c, P) { boat(c, 130, HZ + 14, .7, P.near, mix(WHITE, P.mid, .3)); boat(c, 320, HZ + 26, 1, P.near); },
   sydney(c, P) { boat(c, 200, HZ + 18, .9, P.near, mix(WHITE, P.mid, .3)); boat(c, 340, HZ + 12, .6, P.near); },
+  la(c, P) { boat(c, 130, HZ + 20, .9, P.near, mix(WHITE, P.mid, .3)); boat(c, 230, HZ + 12, .6, P.near); surfer(c, P, 70, HZ + 44); },
+  egypt(c, P) { for (const [x, y, s] of [[140, HZ + 18, 1.1], [270, HZ + 30, 1.4]]) { c.save(); c.translate(x, y); c.scale(s, s); c.fillStyle = P.near; poly(c, [-18, 0, 20, 0, 12, 6, -12, 6]);
+    c.fillStyle = mix(WHITE, P.mid, .25); poly(c, [-1, -34, -1, -3, 16, -3]); poly(c, [-3, -26, -3, -3, -15, -3]); c.fillStyle = P.near; c.fillRect(-2, -36, 1.4, 34); c.restore(); } },
+  saudi(c, P) { for (const [x, y, s] of [[110, HZ + 20, 1], [310, HZ + 30, 1.3]]) { c.save(); c.translate(x, y); c.scale(s, s); c.fillStyle = P.near; poly(c, [-22, -3, 20, 0, 14, 6, -14, 6]); c.fillStyle = mix(WHITE, P.mid, .3);
+    poly(c, [-1, -30, -1, -4, 16, -5]); c.fillStyle = P.near; c.fillRect(-2, -32, 1.4, 28); c.restore(); } },
+  fuji(c, P) { torii(c, P, 150, HZ + 40); boat(c, 290, HZ + 20, .8, P.near, mix(WHITE, P.mid, .3)); },
+  hawaii(c, P) {
+    for (const [x, y] of [[120, HZ + 24], [300, HZ + 34]]) { c.save(); c.translate(x, y); c.fillStyle = mix('#8B5A2B', P.near, .4); poly(c, [-22, -2, 22, -2, 16, 4, -16, 4]); c.fillStyle = P.near; c.fillRect(-14, 4, 28, 1.6); c.fillRect(-10, 5, 1.6, 7); c.fillRect(10, 5, 1.6, 7);
+      c.fillStyle = mix(WHITE, P.mid, .25); poly(c, [0, -24, 0, -3, 14, -3]); c.fillStyle = P.near; c.fillRect(-1, -26, 1.4, 24); c.restore(); }
+    surfer(c, P, 210, HZ + 50);
+  },
   tokyo(c, P) {
     const red = mix('#D9432E', P.mid, .3), x = 64, y = HZ + 42; c.fillStyle = red;
     c.fillRect(x - 20, y - 46, 5, 46); c.fillRect(x + 15, y - 46, 5, 46); poly(c, [x - 30, y - 52, x + 30, y - 52, x + 24, y - 44, x - 24, y - 44]); c.fillRect(x - 22, y - 36, 44, 4);
@@ -897,7 +1011,7 @@ function resetField() {
   const hc = G.cfg; G.tank = CONFIG.cannon.tank; G.hz = { gulls: [], oil: [], bolts: [], fog: [], tides: [], rogue: null,
     kong: hc.kong ? { ph: 'idle', t: rnd(hc.kong.gap[0], hc.kong.gap[1]) * .8, x: Math.random() < .5 ? 70 : 320, hold: 0, u: 0, px: 0, py: 0, sc: 1, breath: 0, flinch: 0 } : null,
     t: { gull: hc.gull ? rnd(4, 8) : 0, oil: hc.oil ? rnd(5, 9) : 0, bolt: hc.bolt ? rnd(6, 10) : 0, fog: hc.fog ? rnd(8, 13) : 0, tide: hc.tide ? rnd(6, 10) : 0, rogue: hc.rogue ? rnd(6, 11) : 0 } };
-  G.stunT = 0; G.jets = []; G.cannon = { a: -1.2, cool: 0 };
+  G.stunT = 0; G.jets = []; G.cannon = { a: -1.2, cool: 0 }; G.nextHeart = 10;
   const g = G.cfg.pelGap; G.pel = { ph: 'perch', t: rnd(g[0], g[1]) * .6, ev: null, x: CONFIG.pelican.perchX, y: CONFIG.pelican.perchY, tgt: null, flap: 0, carry: false, fx: 0, fy: 0 };
 }
 function startLevel(L, mode) {
@@ -906,7 +1020,7 @@ function startLevel(L, mode) {
   if (mode === 'fresh') G.score = 0; else if (mode === 'retry') G.score = G.levelStartScore;
   G.levelStartScore = G.score;
   resetField(); setBG(L);
-  G.banner = CONFIG.banner; G.bannerTitle = 'LEVEL ' + L; G.bannerSub = G.info.world.name.toUpperCase() + ' · ' + TOD[G.info.tod].name; G.bannerTip = INTRO[L] || '';
+  G.banner = CONFIG.banner; G.bannerTitle = 'LEVEL ' + L; G.bannerSub = G.info.world.name.toUpperCase() + ' · ' + TOD[G.info.tod].name; G.bannerTip = INTRO[L] || (G.cfg.kong ? 'BOSS: the giant ape returns' : L === G.info.world.first ? 'Welcome to ' + G.info.world.name : '');
   G.state = 'playing'; show(null); inp.ptrs.clear(); syncInput();
   Save.d.last = L; Save.flush();
 }
@@ -936,6 +1050,7 @@ function planDrop() {
   if (r < cfg.bomb) kind = 'bomb';
   else if (r < cfg.bomb + cfg.gold) kind = 'gold';
   else if (r < cfg.bomb + cfg.gold + cfg.power) { const o = ['slow', 'magnet']; if (G.lives < CONFIG.lives) o.push('heart', 'heart'); kind = pick(o); }
+  if (!G.demo && G.lives < CONFIG.lives && G.deliveries >= G.nextHeart) { kind = 'heart'; G.nextHeart = G.deliveries + 12; }   // long levels: a heart roughly every 12 deliveries while you're hurt
   const ramp = Math.min(cfg.rampMax, 1.5 * G.deliveries);
   let vy = (cfg.base + ramp) * (1 + rnd(-cfg.spread, cfg.spread)); if (kind === 'bomb') vy *= .9;
   let best = rnd(40, 350), bv = 1e9;
@@ -1472,7 +1587,7 @@ function buildHow() {
     ['pelican', 'From level 4 the pelican shows a <b>!</b>, then snatches a parcel or drops a <b>decoy fish</b>. Seagulls knock parcels sideways or steal them. Tap <b>SPRAY</b> (or Space) to blast them with your water cannon: 3 shots, refilling over time.'],
     ['gold', '<b>Golden parcels</b> score 50. <b>Bombs</b> cost a life, so let them fall into the sea.'],
     ['power', '<b>Bubbles</b> help you: heart (+1 life), clock (slow motion) and magnet (wider catch).'],
-    ['world', 'Hit each level\'s delivery target to travel on. <b>50 levels across 10 cities</b>, and levels 1 to 8 are free.']];
+    ['world', 'Hit each level\'s delivery target to travel on. <b>75 levels across 15 worlds</b>, and levels 1 to 8 are free.']];
   $('#how-list').innerHTML = rows.map(r => `<div class="how card"><canvas width="128" height="112" data-i="${r[0]}"></canvas><p>${r[1]}</p></div>`).join('');
   document.querySelectorAll('#how-list canvas').forEach(cv3 => {
     const c = cv3.getContext('2d'), k = cv3.dataset.i; c.scale(2, 2); c.translate(32, 34);
@@ -1487,12 +1602,14 @@ function buildHow() {
     else { c.scale(.8, .8); drawItem(c, k, 0); }
   });
 }
+const thumbCache = {};
 function buildLevels() {
   const box = $('#lv-list'), free = CONFIG.levels.free, un = Billing.unlocked(); box.innerHTML = '';
   for (const w of WORLDS) {
     const locked = w.first > free && !un, el = document.createElement('div'); el.className = 'world card' + (locked ? ' locked' : '');
     const th = document.createElement('canvas'); th.className = 'thumb'; th.width = 312; th.height = 200;
-    const big = buildBG(Math.min(w.last, w.first + 1), .5); th.getContext('2d').drawImage(big, 0, 250 * .5, 390 * .5, 250 * .5, 0, 0, 312, 200);
+    if (!thumbCache[w.id]) { const big = buildBG(Math.min(w.last, w.first + 1), .5), tc = mk(312, 200); tc.getContext('2d').drawImage(big, 0, 250 * .5, 390 * .5, 250 * .5, 0, 0, 312, 200); thumbCache[w.id] = tc; }
+    th.getContext('2d').drawImage(thumbCache[w.id], 0, 0);
     let btns = ''; for (let L = w.first; L <= w.last; L++) {
       const st = Save.d.stars[L] || 0, ok = canPlay(L), pay = L > free && !un, cur = ok && L === playLevel() && !st;
       btns += `<button class="lv${st ? ' done' : ''}${cur ? ' cur' : ''}${!ok && !pay ? ' off' : ''}${pay ? ' pay' : ''}" data-act="pick" data-level="${L}" aria-label="Level ${L}${pay ? ' locked' : ''}">${pay ? '🔒' : L}<i>${st ? '★'.repeat(st) : '&nbsp;'}</i></button>`;
