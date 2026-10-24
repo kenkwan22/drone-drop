@@ -1,6 +1,6 @@
 # Drone Drop
 
-A one-button-at-a-time catch game in the spirit of Game & Watch *Parachute*. A drone drops parcels, you slide a delivery van to catch them, and a pelican on the right edge causes trouble. 86 levels across 17 worlds.
+A one-button-at-a-time catch game in the spirit of Game & Watch *Parachute*. A drone drops parcels, you slide a delivery van to catch them, and a pelican on the right edge causes trouble. 60 levels across 17 worlds.
 
 Single self-contained `index.html` (HTML5 canvas, no build step, no dependencies besides Google Fonts). Portrait phone first (390 x 844 logical scene, scaled to fit), playable on desktop.
 
@@ -18,17 +18,22 @@ Controls: on-screen left/right buttons, drag, arrow keys or A/D. Esc or P pauses
 
 | Levels | World | Levels | World |
 |---|---|---|---|
-| 1-4 | Harbor Town | 40-44 | **Neon City 2099** (cyberpunk) |
-| 5-8 | New York | 45-49 | **Chrome Harbor** (futuristic) |
-| 9-13 | London | 50-54 | Saudi Arabia |
-| 14-18 | Paris | 55-59 | Tokyo |
-| 19-23 | Sydney | 60-64 | Mount Fuji |
-| 24-28 | Los Angeles | 65-69 | China |
-| 29-33 | Egypt | 70-74 | Hawaii |
-| 34-39 | Dubai | 75-80 | Tropical Paradise |
-| | | 81-86 | Sky City |
+| 1-4 | Harbor Town | 29-31 | Mount Fuji |
+| 5-8 | New York | 32-33 | China |
+| 9-10 | London | 34-36 | Hawaii |
+| 11-12 | Paris | 37-39 | Tropical Paradise |
+| 13-15 | Sydney | 40-46 | **Neon City 2099** (cyberpunk) |
+| 16-18 | Los Angeles | 47-53 | **Chrome Harbor** (futuristic) |
+| 19-21 | Egypt | 54-60 | Sky City |
+| 22-23 | Dubai | | |
+| 24-26 | Saudi Arabia | | |
+| 27-28 | Tokyo | | |
 
-Each level cycles through five times of day (dusk, night, sunrise, day, golden hour; the cyberpunk worlds stay mostly dusk and night) and mirrors alternate levels, so every one of the 86 backdrops is different. From level 40 the look turns futuristic: Neon City has a giant holographic AI head, a monorail, flying cars and neon signs in the rain, and Chrome Harbor has a glowing ring gate, a maglev, a space elevator and hover boats. The art gets richer as you go: a harbour with a lighthouse, then landmarks (Statue of Liberty, Big Ben, Eiffel Tower, the Hollywood sign and Santa Monica pier, the Giza pyramids and Sphinx, Burj Khalifa, Kingdom Centre, Opera House, Tokyo Tower, Mount Fuji, pagodas, Diamond Head, a volcano island) and finally a floating sky city under an aurora.
+Each level cycles through five times of day (dusk, night, sunrise, day, golden hour; the cyberpunk worlds stay mostly dusk and night) and mirrors alternate levels, so every one of the 60 backdrops is different. From level 40 the look turns futuristic: Neon City has a giant holographic AI head, a monorail, flying cars and neon signs in the rain, and Chrome Harbor has a glowing ring gate, a maglev, a space elevator and hover boats. The art gets richer as you go: a harbour with a lighthouse, then landmarks (Statue of Liberty, Big Ben, Eiffel Tower, the Hollywood sign and Santa Monica pier, the Giza pyramids and Sphinx, Burj Khalifa, Kingdom Centre, Opera House, Tokyo Tower, Mount Fuji, pagodas, Diamond Head, a volcano island) and finally a floating sky city under an aurora.
+
+## The ending
+
+Clear level 60 and the **Drone Champion** finale plays: fireworks (rockets that burst into spheres and perfect rings), confetti, a rotating sunburst, a golden trophy with a crowned champion drone on top, the tamed ape cheering on one side and the pelican in a party hat on the other. The panel shows your final score, total stars out of 180 and a rank (Rookie Pilot, Ace Courier, Sky Captain, Grand Ace, Legend of the Skies). You can share your score, roll the credits, replay any level, and you unlock the **Champion Van** (purple with a gold trophy on the roof) in the Garage. The title screen shows a trophy badge from then on.
 
 ## Difficulty
 
@@ -47,7 +52,7 @@ Hazards, all tunable in `levelCfg()` and `hzGap()`: seagulls that knock parcels 
 
 **Water cannon.** From level 4 a SPRAY button (Space, W or Up on a keyboard) fires a 3-shot tank that refills every 5 s. It auto-aims at the pelican, a seagull near a parcel, the rogue drone or the ape. During TURBO it fires automatically with no limit.
 
-**Boss ape.** On every fifth level from 20 to 50 (then 60, 70, 80 and 86, gentler) a giant ape wades in from the sea, roars, leaps up and grabs the drone's skid. He hangs there swinging like a pendulum with random lurches, dragging the drone from side to side, and parcels leave with the drone's sideways speed, so their angle is hard to predict. Spraying him makes him let go sooner.
+**Boss ape.** On every fifth level from 20 to 50 (then 60, gentler) a giant ape wades in from the sea, roars, leaps up and grabs the drone's skid. He hangs there swinging like a pendulum with random lurches, dragging the drone from side to side, and parcels leave with the drone's sideways speed, so their angle is hard to predict. Spraying him makes him let go sooner.
 
 Extras: golden parcels (+50), heart (+1 life), slow-mo and magnet bubbles.
 
@@ -57,7 +62,7 @@ Six cosmetic vehicles, unlocked by total stars (see `VEHICLES` in `index.html`):
 
 ## Paywall
 
-Levels 1-8 are free. Levels 9-86 are the **World Tour**, a one-time $15 purchase (`CONFIG.billing`).
+Levels 1-8 are free. Levels 9-60 are the **World Tour**, a one-time $15 purchase (`CONFIG.billing`).
 
 A static page cannot safely confirm a payment by itself, so the build ships fail-closed:
 
