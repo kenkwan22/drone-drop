@@ -209,8 +209,8 @@ button:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
         <div class="card">
           <ul class="list">
             <li><b id="pay-n">52 more levels</b> &mdash; <span id="pay-range">9 to 60</span></li>
-            <li>London, Paris, Sydney, Los Angeles, Egypt, Dubai, Saudi Arabia, Tokyo, Mount Fuji, China, Hawaii, the Tropics, a cyberpunk Neon City, Chrome Harbor &amp; Sky City</li>
-            <li>Wind, bombs, double drops and slippery decks</li>
+            <li>World landmarks, a volcano island, a cyberpunk Neon City, then <b>flying levels</b> in clouds, storms, orbit and deep space</li>
+            <li>Boss ape and boss alien, storms, bombs and enemy aircraft</li>
             <li>One payment, no ads, yours for good</li>
           </ul>
         </div>
@@ -263,6 +263,7 @@ const CONFIG = {
   pelican: { warn: 1, perchX: 372, perchY: 554, scale: .8, flySpeed: 560 },
   powers:  { slowSeconds: 5, slowFactor: .55, magnetSeconds: 8, magnetBonus: 26 },
   levels:  { total: 60, free: 8 },
+  air:     { from: 30 },   // levels where the van becomes an aircraft and the game moves into the sky
   banner:  2.4,
   billing: {
     productId: 'drone-drop-world-tour',
@@ -409,24 +410,32 @@ const Sfx = {
 /* ------------------------------ WORLDS & LEVELS ------------------------- */
 const TODS = ['dusk', 'night', 'sunrise', 'day', 'golden'];
 const WORLDS = [
-  { id: 'harbor',   name: 'Harbor Town',       len: 4 },
-  { id: 'newyork',  name: 'New York',          len: 4 },
-  { id: 'london',   name: 'London',            len: 2 },
-  { id: 'paris',    name: 'Paris',             len: 2 },
-  { id: 'sydney',   name: 'Sydney',            len: 3 },
-  { id: 'la',       name: 'Los Angeles',       len: 3 },
-  { id: 'egypt',    name: 'Egypt',             len: 3 },
-  { id: 'dubai',    name: 'Dubai',             len: 2 },
-  { id: 'saudi',    name: 'Saudi Arabia',      len: 3 },
-  { id: 'tokyo',    name: 'Tokyo',             len: 2 },
-  { id: 'fuji',     name: 'Mount Fuji',        len: 3 },
-  { id: 'china',    name: 'China',             len: 2 },
-  { id: 'hawaii',   name: 'Hawaii',            len: 3 },
-  { id: 'tropical', name: 'Tropical Paradise', len: 3 },
-  { id: 'neon',     name: 'Neon City 2099',    len: 7, tods: ['night', 'dusk', 'night', 'night', 'dusk'] },        // cyberpunk starts at level 40
-  { id: 'chrome',   name: 'Chrome Harbor',     len: 7, tods: ['dusk', 'night', 'sunrise', 'night', 'golden'] },
-  { id: 'sky',      name: 'Sky City',          len: 7 }
+  { id: 'harbor',   name: 'Harbor Town',       len: 3 },
+  { id: 'newyork',  name: 'New York',          len: 3 },
+  { id: 'london',   name: 'London',            len: 1 },
+  { id: 'paris',    name: 'Paris',             len: 1 },
+  { id: 'sydney',   name: 'Sydney',            len: 1 },
+  { id: 'la',       name: 'Los Angeles',       len: 1 },
+  { id: 'egypt',    name: 'Egypt',             len: 1 },
+  { id: 'dubai',    name: 'Dubai',             len: 1 },
+  { id: 'saudi',    name: 'Saudi Arabia',      len: 1 },
+  { id: 'tokyo',    name: 'Tokyo',             len: 1 },
+  { id: 'fuji',     name: 'Mount Fuji',        len: 1 },
+  { id: 'china',    name: 'China',             len: 1 },
+  { id: 'hawaii',   name: 'Hawaii',            len: 1 },
+  { id: 'tropical', name: 'Tropical Paradise', len: 1 },
+  { id: 'volcano',  name: 'Volcano Island',    len: 6, tods: ['dusk', 'night', 'golden', 'night', 'dusk', 'night'] },           // around level 20
+  { id: 'neon',     name: 'Neon City 2099',    len: 3, tods: ['night', 'dusk', 'night'] },                                       // cyberpunk from level 25
+  { id: 'chrome',   name: 'Chrome Harbor',     len: 2, tods: ['dusk', 'night'] },
+  // from level 30 the game is played in the air: a plane catches parcels from the drone (biplane 30-39, jet 40-49, space plane 50-60)
+  { id: 'clouds',   name: 'Cloud Highway',     len: 5, air: true, floor: 'cloud', tods: ['day', 'sunrise', 'golden', 'day', 'dusk'] },
+  { id: 'sky',      name: 'Sky City',          len: 5, air: true, floor: 'cloud', tods: ['golden', 'day', 'dusk', 'sunrise', 'night'] },
+  { id: 'strato',   name: 'Stratosphere',      len: 5, air: true, floor: 'earth', tods: ['night', 'dusk', 'sunrise', 'night', 'golden'] },
+  { id: 'thunder',  name: 'Thunder Alley',     len: 5, air: true, floor: 'storm', tods: ['dusk', 'night', 'dusk', 'night', 'night'] },
+  { id: 'orbit',    name: 'Earth Orbit',       len: 5, air: true, floor: 'earth', tods: ['night', 'dusk', 'night', 'sunrise', 'night'] },
+  { id: 'space',    name: 'Deep Space',        len: 6, air: true, floor: 'nebula', tods: ['night', 'night', 'dusk', 'night', 'night', 'night'] }
 ];
+const planeTier = L => L >= 50 ? 2 : L >= 40 ? 1 : 0;               // the aircraft changes every 10 levels
 (() => { let n = 1; WORLDS.forEach((w, i) => { w.i = i; w.first = n; n += w.len; w.last = n - 1; }); })();
 function levelInfo(L) {
   const world = WORLDS.find(w => L >= w.first && L <= w.last), idx = L - world.first;
@@ -454,6 +463,19 @@ function palette(info) {
     const k = wid === 'neon' ? ['#7A2CFF', '#FF2D95', '#4A1C8E', '#2A1060', '#14083A', '#3A1C8E'] : ['#0FD3E8', '#3A8CFF', '#1C6E8E', '#103C6E', '#081E3C', '#0F6E8E'];
     P.sky = P.sky.map((s, i) => mix(s, i < 3 ? k[0] : k[1], .34)); P.far = mix(P.far, k[2], .45); P.mid = mix(P.mid, k[3], .55); P.near = mix(P.near, k[4], .6); P.water = mix(P.water, k[5], .5);
     P.lights = Math.max(P.lights, .55); P.stars = 0; P.cyber = true;
+  } else if (wid === 'volcano') {                                        // red ash sky, black rock, lava-lit water
+    P.sky = ['#1A0A12', '#3A1018', '#6A1C1C', '#B8381C', '#F0642A', '#FFA040'].map((s, i) => mix(s, t.sky[i], .22)); P.far = mix(P.far, '#3A1C26', .6); P.mid = mix(P.mid, '#2A1218', .65); P.near = mix(P.near, '#150810', .7);
+    P.water = mix(P.water, '#3A1218', .6); P.lights = .3; P.stars = 0; P.sun = null; P.moon = null; P.cloud = '#4A2A30'; P.cloudA = .6; P.lava = true;
+  } else if (wid === 'clouds') {                                         // cloud highway: bright sky, white cloud floor
+    P.water = mix('#FFFFFF', P.sky[4], .35); P.far = mix(P.far, '#FFFFFF', .35); P.mid = mix(P.mid, '#FFFFFF', .2);
+  } else if (wid === 'strato') {                                         // dark blue, thin air, curved earth below
+    const b = ['#02030F', '#050A2A', '#0A1A55', '#13348A', '#2A6AC8', '#7FC4FF']; P.sky = b.map((s, i) => i > 3 ? mix(s, t.sky[i], .35) : s); P.stars = 140; P.sun = t.sun ? Object.assign({}, t.sun, { y: HZ - 20 }) : null; P.moon = null; P.water = '#1C5AA8'; P.cloud = '#BFD8FF'; P.cloudA = .5;
+  } else if (wid === 'thunder') {                                        // storm front: bruised purple-grey
+    P.sky = ['#0E1020', '#1C2038', '#2C3250', '#444C6E', '#68708E', '#8A90AA']; P.stars = 0; P.sun = null; P.moon = null; P.water = '#3A4060'; P.cloud = '#2A2F4A'; P.cloudA = .8; P.lights = 0;
+  } else if (wid === 'orbit') {                                          // Earth below, black sky above
+    P.sky = ['#000005', '#02030F', '#040820', '#06123A', '#0A2260', '#2A62C0']; P.stars = 200; P.sun = { x: .78, y: 150, r: 26, col: '#FFFBE0' }; P.moon = null; P.water = '#123C8A'; P.cloud = '#BFD8FF'; P.cloudA = .3; P.lights = .5;
+  } else if (wid === 'space') {                                          // nebula and planets
+    P.sky = ['#05010F', '#0E0630', '#1A0A4A', '#2C1068', '#4A1A7A', '#7A2A8A']; P.stars = 220; P.sun = null; P.moon = null; P.water = '#2A1068'; P.cloud = '#8F5CD0'; P.cloudA = .3; P.lights = 0;
   } else if (wid === 'sky') {
     P.far = mix(P.far, '#8E7BE8', .45); P.mid = mix(P.mid, '#6C5CD0', .45); P.near = mix(P.near, '#3E2F9A', .4);
     P.water = mix(P.water, '#7A5CD6', .4); P.sky = P.sky.map(s => mix(s, '#6A3FD0', .28)); P.stars = Math.max(P.stars, 70);
@@ -468,11 +490,18 @@ const fallBase = L => L <= 5 ? 120 + 15 * (L - 1) : Math.min(360, 180 + 7 * (L -
 const birdGap = (L, g, fa, fb) => { const f = L >= 10 ? Math.max(.6, .75 - (L - 10) * .05) : 1; return [Math.max(fa, g[0] * f), Math.max(fb, g[1] * f)]; };
 const hzGap = (L, a, b, fa, fb) => { const hf = L >= 7 ? Math.max(.55, 1 - (L - 6) * .03) : 1; return [Math.max(fa, a * hf), Math.max(fb, b * hf)]; };
 /* Difficulty peaks at level 45-50, then eases off again so the late worlds are a victory lap, not a wall (level 75 plays like level ~32). */
-const kongCfg = L => L >= 20 && (L <= 50 ? L % 5 === 0 : L % 10 === 0 || L === CONFIG.levels.total) ? { gap: L > 40 ? [14, 20] : [11, 17], hold: L > 40 ? 3.5 : Math.min(5, 3.5 + (L - 20) / 5 * .5), dvx: L > 50 ? 85 : Math.min(125, 85 + (L - 20) * 3) } : null;
+/* Boss levels: a giant ape on levels 10, 16, 22 and 28; from the air phase (30+) an alien that sits on the drone and tries to steal it, every 6th level. */
+const bossKind = L => [10, 16, 22, 28].includes(L) ? 'ape' : (L >= CONFIG.air.from && (L - CONFIG.air.from) % 6 === 0 ? 'alien' : null);
+const kongCfg = L => { const kind = bossKind(L); if (!kind) return null;
+  return kind === 'ape' ? { kind, gap: [11, 17], hold: 3.5 + (L - 10) / 18 * 1.5 }
+    : { kind, gap: L > 48 ? [15, 21] : [11, 17], need: L > 50 ? 7 : Math.max(5.5, 7 - (L - 30) / 18 * 1.5) }; };       // need = seconds he must sit there to steal the drone
 function levelCfg(L) {
   const D = L <= 50 ? Math.min(L, 38) : Math.max(24, 36 - (L - 51) * .7);
   const c = cfgFor(Math.floor(D)); c.L = L;
   if (L > 50) { c.pelGap = c.pelGap.map(v => v * 1.35); c.gull = c.gull.map(v => v * 1.35); c.gullSteal *= .6; c.storm = Object.assign({}, c.storm, { gap: c.storm.gap.map(v => v * 1.4), force: c.storm.force * .8 }); }   // the birds calm down after level 50 too
+  c.air = L >= CONFIG.air.from; if (c.air) { c.tide = null; c.oil = null; c.gullSteal = 0; }                                           // in the air: no sea, no deck; aircraft replace the pelican and gulls
+  if (c.air && L < CONFIG.air.from + 5) { c.pelGap = c.pelGap.map(v => v * 1.3); c.gull = c.gull.map(v => v * 1.3); }                     // a gentler first few flying levels
+  if (L >= 25) { c.cloudy = true; const g = hzGap(Math.floor(D), c.air ? 7 : 10, c.air ? 11 : 15, 5, 8); c.fog = L > 50 ? g.map(v => v * 1.3) : g; }   // from level 25 clouds roll in and hide the parcels
   c.quota = L <= 50 ? Math.min(48, 14 + Math.floor(L * .8)) : 48 - Math.floor((L - 50) / 5) * 2; c.kong = kongCfg(L); return c;
 }
 function cfgFor(L) {
@@ -517,7 +546,9 @@ function cfgFor(L) {
 const INTRO = { 1: 'Slide the van under the parcels', 2: 'New: golden parcels are worth 50', 3: 'New: power-up bubbles',
   4: 'New: pelican, seagulls & your SPRAY cannon', 15: 'New: storms blow parcels sideways. Aim upwind!', 5: 'New: tide surges shove the van', 6: 'New: oil slicks & wind gusts', 7: 'Hazards now come faster. Parcels fall at mixed speeds',
   8: 'New: rogue drone drops junk. Do not catch it', 9: 'New: lightning. Stay out of the glow', 10: 'New: bombs! Never catch the dark ones', 12: 'New: fog banks hide the parcels', 18: 'New: rapid-fire double drops',
-  20: 'BOSS: a giant ape shakes the drone!', 25: 'BOSS: the ape is back, and the deck is slippery', 30: 'BOSS: the ape is angrier', 35: 'BOSS: the ape, and stealth parcels' };
+  19: 'Volcano Island: lava, ash and embers', 25: 'New: clouds roll in and hide the parcels. Neon City!', 30: 'IN THE AIR! Your van is now a plane. Aircraft are the hazard',
+  40: 'Your plane is now a JET', 50: 'Your plane is now a SPACE PLANE', 35: 'New: stealth parcels flicker' };
+const BOSS_TIP = { ape: 'BOSS: a giant ape grabs the drone', alien: 'BOSS: an alien tries to steal the drone. Spray him!' };
 
 /* ------------------------------ BACKGROUND ART -------------------------- */
 const HZ = CONFIG.scene.horizon;
@@ -556,6 +587,41 @@ function boat(c, x, y, s, col, sail) {
 }
 function lamp(c, P, x, y, r) { if (P.lights > .1) glow(c, x, y, r, LIT, .7); }
 
+/* ---- flying levels (30+): cloud, storm, earth and nebula "floors" under the plane ---- */
+function puffCloud(c, x, y, s, col, a) {                                  // soft cumulus: shaded underside, lit top
+  c.save(); c.translate(x, y); c.scale(s, s); const b = [[-34, 0, 22], [-12, -10, 28], [14, -8, 26], [36, 2, 20], [0, 6, 26]];
+  c.fillStyle = rgba(mix(col, '#5A6A9A', .4), a); for (const [bx, by, r] of b) { c.beginPath(); c.arc(bx, by + 8, r, 0, TAU); c.fill(); }
+  c.fillStyle = rgba(col, a); for (const [bx, by, r] of b) { c.beginPath(); c.arc(bx, by, r, 0, TAU); c.fill(); }
+  c.fillStyle = rgba('#FFFFFF', a * .45); for (const [bx, by, r] of b) { c.beginPath(); c.arc(bx - r * .2, by - r * .3, r * .55, 0, TAU); c.fill(); } c.restore();
+}
+function scatterPuffs(c, rng, col, n, aMax) { const pts = []; for (let i = 0; i < n; i++) pts.push([rng() * (W + 80) - 40, HZ + 6 + Math.pow(rng(), .8) * (H - HZ)]); pts.sort((a, b) => a[1] - b[1]); for (const [x, y] of pts) puffCloud(c, x, y, .3 + (y - HZ) / (H - HZ) * 1.7, col, aMax * (.55 + (y - HZ) / (H - HZ) * .45)); }
+const AIRFLOOR = {
+  cloud(c, P, rng) {
+    const g = c.createLinearGradient(0, HZ - 4, 0, H); g.addColorStop(0, mix(P.water, '#FFFFFF', .25)); g.addColorStop(.5, P.water); g.addColorStop(1, mix(P.water, P.sky[2], .45)); c.fillStyle = g; c.fillRect(0, HZ - 4, W, H - HZ + 4);
+    scatterPuffs(c, rng, mix('#FFFFFF', P.sky[5], .12), 52, .92);
+  },
+  storm(c, P, rng) {
+    const g = c.createLinearGradient(0, HZ - 4, 0, H); g.addColorStop(0, '#2E3350'); g.addColorStop(1, '#10122A'); c.fillStyle = g; c.fillRect(0, HZ - 4, W, H - HZ + 4);
+    scatterPuffs(c, rng, '#4A5072', 52, .9);
+    for (let i = 0; i < 7; i++) glow(c, rng() * W, HZ + 40 + rng() * (H - HZ - 80), 70 + rng() * 60, '#B8C8FF', .22);                    // lightning flickering inside the cloud
+  },
+  earth(c, P, rng) {
+    c.fillStyle = mix(P.sky[5], '#000010', .35); c.fillRect(0, HZ - 4, W, H - HZ + 4);
+    c.save(); c.beginPath(); c.arc(195, HZ + 900, 900, 0, TAU); c.clip();                                                                   // the curve of the Earth
+    const g = c.createLinearGradient(0, HZ, 0, H); g.addColorStop(0, '#5AA8F0'); g.addColorStop(.25, '#2A70D0'); g.addColorStop(1, P.water); c.fillStyle = g; c.fillRect(0, HZ, W, H - HZ);
+    c.fillStyle = 'rgba(70,150,80,.75)'; for (let i = 0; i < 9; i++) { c.beginPath(); c.ellipse(rng() * W, HZ + 40 + rng() * (H - HZ - 60), 30 + rng() * 80, 14 + rng() * 30, rng() * 3, 0, TAU); c.fill(); }   // continents
+    c.fillStyle = 'rgba(190,150,90,.5)'; for (let i = 0; i < 5; i++) { c.beginPath(); c.ellipse(rng() * W, HZ + 60 + rng() * (H - HZ - 80), 18 + rng() * 30, 8 + rng() * 14, rng() * 3, 0, TAU); c.fill(); }
+    scatterPuffs(c, rng, '#FFFFFF', 30, .5);
+    if (P.lights > .2) { c.fillStyle = '#FFE9A8'; for (let i = 0; i < 160; i++) { c.globalAlpha = .3 + rng() * .6; c.fillRect(rng() * W, HZ + 30 + rng() * (H - HZ - 40), 1.6, 1.6); } c.globalAlpha = 1; }
+    c.restore();
+    const lg = c.createLinearGradient(0, HZ - 26, 0, HZ + 14); lg.addColorStop(0, 'rgba(120,200,255,0)'); lg.addColorStop(.6, 'rgba(150,215,255,.65)'); lg.addColorStop(1, 'rgba(120,200,255,0)'); c.fillStyle = lg; c.fillRect(0, HZ - 26, W, 40);   // atmosphere glow
+  },
+  nebula(c, P, rng) {
+    const g = c.createLinearGradient(0, HZ - 4, 0, H); g.addColorStop(0, '#3A1480'); g.addColorStop(.5, '#2A0E66'); g.addColorStop(1, '#12053A'); c.fillStyle = g; c.fillRect(0, HZ - 4, W, H - HZ + 4);
+    for (let i = 0; i < 9; i++) glow(c, rng() * W, HZ + rng() * (H - HZ), 90 + rng() * 120, ['#FF5CC8', '#5CE8FF', '#9A6BFF', '#FFB36B'][i % 4], .16 + rng() * .1);
+    for (let i = 0; i < 160; i++) { c.fillStyle = rgba(WHITE, .25 + rng() * .65); const r = .5 + rng() * 1.5; c.fillRect(rng() * W, HZ + rng() * (H - HZ), r, r); }
+  }
+};
 const NEONS = [PINK, CYAN, '#B58BFF', '#FFE27D'];
 function flyingCar(c, x, y, s, col, dir) {
   c.save(); c.translate(x, y); c.scale(s * dir, s);
@@ -776,6 +842,60 @@ const ART = {
     holoSign(c, 28, 250, 46, 22, CYAN, rng); holoSign(c, 330, 280, 40, 20, PINK, rng);
     row(c, rng, P, { color: P.near, minW: 14, maxW: 26, minH: 6, maxH: 16, style: 'step', lit: P.lights * .6 });
   },
+  volcano(c, P, rng) {                                                       // erupting volcano island
+    ridge(c, rng, P.far, HZ, 36, 2.2, HZ - 6);
+    c.save(); c.translate(262, HZ); c.fillStyle = P.mid;                    // main volcano
+    c.beginPath(); c.moveTo(-170, 0); c.quadraticCurveTo(-70, -30, -30, -172); c.lineTo(30, -172); c.quadraticCurveTo(80, -30, 190, 0); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(0,0,0,.22)'; c.beginPath(); c.moveTo(30, -172); c.quadraticCurveTo(80, -30, 190, 0); c.lineTo(20, 0); c.closePath(); c.fill();
+    glow(c, 0, -176, 110, '#FF6A2A', .85); c.fillStyle = '#FFB347'; c.beginPath(); c.ellipse(0, -172, 30, 7, 0, 0, TAU); c.fill();   // glowing crater
+    c.lineCap = 'round'; for (const [x0, x1, y1, w] of [[-4, -40, -20, 5], [6, 28, -14, 6], [-2, -8, -60, 3.5]]) { c.strokeStyle = '#FF7A2A'; c.lineWidth = w; c.beginPath(); c.moveTo(x0, -168); c.quadraticCurveTo(x0 + (x1 - x0) * .2, y1 * 4, x1, y1); c.stroke(); c.strokeStyle = 'rgba(255,230,160,.8)'; c.lineWidth = w * .4; c.stroke(); glow(c, x1, y1, 26, '#FF7A2A', .5); }   // lava rivers
+    for (let i = 0; i < 16; i++) { const a = -Math.PI / 2 + (rng() - .5) * 1.3, d = 20 + rng() * 120; circ(c, Math.cos(a) * d * .7, -176 + Math.sin(a) * d, 1.6 + rng() * 2.4, i % 3 ? '#FFB347' : '#FF5C2A'); }   // fountain sparks
+    for (const [x, y, r, a] of [[0, -200, 24, .75], [10, -236, 32, .7], [26, -280, 42, .65], [52, -330, 54, .55], [84, -370, 64, .45]]) { c.fillStyle = rgba('#2A1A22', a); circ(c, x, y, r); c.fillStyle = rgba('#FF6A2A', a * .25); circ(c, x - r * .2, y + r * .35, r * .6); }  // ash column
+    c.strokeStyle = 'rgba(255,240,170,.8)'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(24, -290); c.lineTo(14, -270); c.lineTo(24, -262); c.lineTo(12, -240); c.stroke();   // volcanic lightning
+    c.restore();
+    c.save(); c.translate(70, HZ); c.fillStyle = P.near; c.beginPath(); c.moveTo(-70, 0); c.quadraticCurveTo(-20, -20, -10, -86); c.lineTo(14, -86); c.quadraticCurveTo(30, -20, 80, 0); c.closePath(); c.fill(); glow(c, 2, -88, 46, '#FF6A2A', .7); circ(c, 2, -88, 5, '#FFB347'); c.restore();
+    ridge(c, rng, P.near, HZ, 14, 3.4, HZ + 2);
+    c.fillStyle = '#FF9A4A'; for (let i = 0; i < 40; i++) { c.globalAlpha = .4 + rng() * .5; c.fillRect(rng() * W, 60 + rng() * 400, 1.8, 1.8); } c.globalAlpha = 1;   // drifting embers
+  },
+  clouds(c, P, rng) {                                                        // cloud highway: peaks above a cloud sea
+    for (const [x, h, w] of [[70, 110, 90], [190, 70, 70], [330, 140, 100]]) { c.fillStyle = P.far; poly(c, [x - w, HZ + 4, x - w * .3, HZ - h * .55, x - w * .1, HZ - h * .62, x, HZ - h, x + w * .25, HZ - h * .6, x + w * .5, HZ - h * .35, x + w, HZ + 4]); c.fillStyle = mix(P.far, '#FFFFFF', .8); poly(c, [x - w * .25, HZ - h * .72, x, HZ - h, x + w * .22, HZ - h * .66, x + w * .08, HZ - h * .6, x - w * .02, HZ - h * .7, x - w * .12, HZ - h * .6]); }
+    for (const [x, y, s] of [[80, HZ - 4, 1.6], [250, HZ - 2, 2], [380, HZ - 6, 1.5]]) puffCloud(c, x, y, s, '#FFFFFF', .95);
+    for (const [bx, by, bc] of [[300, 200, PINK], [120, 280, AMBER]]) { c.save(); c.translate(bx, by); c.fillStyle = mix(bc, P.mid, .25); circ(c, 0, 0, 14); c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.ellipse(0, 0, 4.5, 14, 0, 0, TAU); c.fill(); c.strokeStyle = P.mid; c.lineWidth = 1; c.beginPath(); c.moveTo(-8, 12); c.lineTo(-4, 22); c.moveTo(8, 12); c.lineTo(4, 22); c.stroke(); c.fillStyle = P.near; c.fillRect(-4, 22, 8, 5); c.restore(); }
+    c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 3; for (const [x0, y0, x1, y1] of [[20, 120, 220, 60], [260, 240, 390, 200]]) { const g = c.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(255,255,255,.5)'); c.strokeStyle = g; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke(); }   // contrails
+  },
+  strato(c, P, rng) {                                                        // thin air: the curve of the Earth, contrails, aurora
+    ART._aurora(c, P, rng);
+    c.strokeStyle = 'rgba(160,215,255,.5)'; c.lineWidth = 18; c.beginPath(); c.arc(195, HZ + 900, 912, Math.PI * 1.2, Math.PI * 1.8); c.stroke(); c.strokeStyle = 'rgba(230,248,255,.7)'; c.lineWidth = 4; c.beginPath(); c.arc(195, HZ + 900, 902, Math.PI * 1.2, Math.PI * 1.8); c.stroke();
+    for (const [x0, y0, x1, y1] of [[20, 90, 300, 40], [360, 230, 120, 330], [30, 380, 250, 330]]) { const g = c.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(255,255,255,.55)'); c.strokeStyle = g; c.lineWidth = 2.4; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke(); circ(c, x1, y1, 2.4, WHITE); }
+    for (const [x, y, s] of [[60, HZ - 2, 1.2], [310, HZ, 1.5]]) puffCloud(c, x, y, s, '#DCEBFF', .55);
+  },
+  thunder(c, P, rng) {                                                       // towering thunderheads with lightning inside
+    for (const [x, h, w] of [[50, 210, 90], [170, 150, 80], [290, 250, 110], [390, 160, 70]]) {
+      for (let i = 0; i < 16; i++) { const t = i / 15, px = x + (rng() - .5) * w * (1 - t * .5), py = HZ - t * h + (rng() - .5) * 18, r = 26 + (1 - t) * 30 + rng() * 14; c.fillStyle = rgba(mix('#2E3350', '#7A82A8', t * .55), .96); circ(c, px, py, r); }
+      c.fillStyle = rgba('#8A92B8', .9); c.beginPath(); c.ellipse(x, HZ - h - 18, w * .8, 20, 0, 0, TAU); c.fill();                                           // anvil top
+      glow(c, x + (rng() - .5) * 30, HZ - h * .55, 60, '#CFE0FF', .45);
+    }
+    c.strokeStyle = 'rgba(235,240,255,.9)'; c.lineWidth = 2; c.lineJoin = 'round'; for (const [bx, by] of [[110, HZ - 160], [330, HZ - 200]]) { c.beginPath(); c.moveTo(bx, by); let x = bx, y = by; for (let i = 0; i < 6; i++) { x += rng() * 24 - 12; y += 26; c.lineTo(x, y); } c.stroke(); glow(c, bx, by + 70, 50, '#CFE0FF', .35); }
+    c.strokeStyle = 'rgba(150,170,210,.25)'; c.lineWidth = 1.2; for (let i = 0; i < 70; i++) { const x = rng() * W, y = rng() * HZ; c.beginPath(); c.moveTo(x, y); c.lineTo(x - 5, y + 20); c.stroke(); }
+  },
+  orbit(c, P, rng) {                                                         // low Earth orbit: station, satellites, aurora
+    ART._aurora(c, P, rng);
+    c.strokeStyle = 'rgba(120,190,255,.5)'; c.lineWidth = 22; c.beginPath(); c.arc(195, HZ + 900, 914, Math.PI * 1.2, Math.PI * 1.8); c.stroke(); c.strokeStyle = 'rgba(210,240,255,.85)'; c.lineWidth = 4; c.beginPath(); c.arc(195, HZ + 900, 902, Math.PI * 1.2, Math.PI * 1.8); c.stroke();
+    c.save(); c.translate(96, 250); c.rotate(-.12); c.fillStyle = '#C9D3F0'; c.strokeStyle = INK; c.lineWidth = 2; rr(c, -30, -7, 60, 14, 5); c.fill(); c.stroke(); rr(c, -6, -20, 12, 40, 3); c.fill(); c.stroke();   // space station
+    for (const s of [-1, 1]) { c.fillStyle = '#2A62C0'; rr(c, s * 44 - 16, -26, 32, 52, 2); c.fill(); c.stroke(); c.strokeStyle = 'rgba(255,255,255,.4)'; c.lineWidth = 1; c.beginPath(); for (let i = 1; i < 4; i++) { c.moveTo(s * 44 - 16 + i * 8, -26); c.lineTo(s * 44 - 16 + i * 8, 26); } c.stroke(); c.strokeStyle = INK; c.lineWidth = 2; }
+    circ(c, 0, 0, 4, '#FF4D6D'); glow(c, 0, 0, 22, '#FF4D6D', .5); c.restore();
+    for (const [x, y] of [[300, 180], [230, 330], [350, 400]]) { c.fillStyle = '#C9D3F0'; c.fillRect(x - 4, y - 3, 8, 6); c.fillStyle = '#2A62C0'; c.fillRect(x - 13, y - 2, 8, 4); c.fillRect(x + 5, y - 2, 8, 4); circ(c, x, y - 4, 1.4, '#FFE27D'); }
+  },
+  space(c, P, rng) {                                                         // deep space: nebula, ringed giant, moon, asteroids, comet
+    for (let i = 0; i < 6; i++) glow(c, rng() * W, 40 + rng() * 380, 90 + rng() * 120, ['#FF5CC8', '#5CE8FF', '#9A6BFF', '#FFB36B', '#5CFFB0', '#FF7A5C'][i], .2);
+    c.save(); c.translate(280, 150); circ(c, 0, 0, 56, mix('#FFB36B', P.mid, .35)); glow(c, -16, -16, 60, '#FFFFFF', .18);
+    c.fillStyle = 'rgba(120,40,20,.25)'; for (const y of [-26, -8, 12, 30]) { c.beginPath(); c.ellipse(0, y, 56 - Math.abs(y) * .35, 5, 0, 0, TAU); c.fill(); }
+    c.strokeStyle = rgba('#FFE3A8', .85); c.lineWidth = 7; c.beginPath(); c.ellipse(0, 0, 104, 20, -.3, Math.PI * .06, Math.PI * .94); c.stroke(); circ(c, 0, 0, 56, mix('#FFB36B', P.mid, .35)); c.fillStyle = 'rgba(120,40,20,.25)'; c.beginPath(); c.ellipse(0, 12, 54, 5, 0, 0, TAU); c.fill();
+    c.strokeStyle = rgba('#FFE3A8', .85); c.lineWidth = 7; c.beginPath(); c.ellipse(0, 0, 104, 20, -.3, Math.PI * 1.06, Math.PI * 1.94); c.stroke(); c.restore();
+    c.save(); c.translate(60, 330); circ(c, 0, 0, 34, '#C9CCE0'); glow(c, -10, -10, 40, '#FFFFFF', .2); c.fillStyle = 'rgba(80,80,110,.35)'; for (const [x, y, r] of [[-10, -6, 8], [10, 8, 6], [-4, 14, 5], [14, -10, 4]]) circ(c, x, y, r); c.restore();   // moon
+    const gr = c.createLinearGradient(380, 40, 200, 150); gr.addColorStop(0, 'rgba(255,255,255,.95)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); c.strokeStyle = gr; c.lineWidth = 3; c.beginPath(); c.moveTo(380, 40); c.lineTo(200, 150); c.stroke(); glow(c, 380, 40, 20, WHITE, .8);   // comet
+    for (let i = 0; i < 9; i++) { const x = rng() * W, y = 200 + rng() * 260, r = 5 + rng() * 11; c.fillStyle = '#6A6488'; c.beginPath(); for (let k = 0; k < 7; k++) { const a = k / 7 * TAU, rr2 = r * (.7 + rng() * .5); c.lineTo(x + Math.cos(a) * rr2, y + Math.sin(a) * rr2); } c.closePath(); c.fill(); c.fillStyle = 'rgba(255,255,255,.2)'; circ(c, x - r * .25, y - r * .25, r * .35); }
+  },
   la(c, P, rng) {
     ridge(c, rng, P.far, HZ, 48, 1.8, HZ - 6);
     c.fillStyle = P.mid; c.beginPath(); c.moveTo(-10, HZ); c.quadraticCurveTo(60, HZ - 78, 150, HZ - 52); c.quadraticCurveTo(190, HZ - 40, 212, HZ); c.closePath(); c.fill();
@@ -900,6 +1020,8 @@ function surfer(c, P, x, y) {                                                // 
   c.fillStyle = mix('#FF7A33', P.near, .2); c.beginPath(); c.ellipse(0, 3, 12, 2, -.1, 0, TAU); c.fill(); c.fillStyle = P.near; c.fillRect(-1.6, -9, 3.2, 11); circ(c, 0, -12, 3); c.restore();
 }
 const PROPS = {
+  volcano(c, P) { glow(c, 262, HZ + 70, 170, '#FF6A2A', .45); c.fillStyle = 'rgba(255,170,80,.5)'; for (let i = 0; i < 26; i++) { const y = HZ + 8 + i * 9, w = 4 + (26 - i) * 2.2; c.fillRect(262 - w / 2 + Math.sin(i * 1.7) * 6, y, w, 1.6); }
+    for (const [x, y] of [[90, HZ + 30], [330, HZ + 46], [190, HZ + 22]]) { c.fillStyle = '#2A1218'; c.beginPath(); c.ellipse(x, y, 18, 7, 0, 0, TAU); c.fill(); glow(c, x, y, 22, '#FF6A2A', .55); } },
   neon(c, P) { hoverBoat(c, 110, HZ + 22, 1, PINK); hoverBoat(c, 250, HZ + 14, .8, CYAN); hoverBoat(c, 340, HZ + 34, 1.2, '#B58BFF'); },
   chrome(c, P) { hoverBoat(c, 80, HZ + 26, 1.2, CYAN); hoverBoat(c, 220, HZ + 16, .8, '#E8F8FF'); hoverBoat(c, 330, HZ + 30, 1, '#FFE27D'); },
   harbor(c, P) { boat(c, 120, HZ + 16, .8, P.near, mix(WHITE, P.mid, .3)); boat(c, 250, HZ + 26, 1, P.near, mix(WHITE, P.mid, .3)); boat(c, 330, HZ + 12, .6, P.near); },
@@ -955,6 +1077,7 @@ function buildBG(L, S) {
   ART[info.world.id](c, P, rng, info);
   c.restore();
   const hz = c.createLinearGradient(0, HZ - 90, 0, HZ); hz.addColorStop(0, rgba(P.sky[5], 0)); hz.addColorStop(1, rgba(P.sky[5], .34)); c.fillStyle = hz; c.fillRect(0, HZ - 90, W, 90);
+  if (info.world.air) { AIRFLOOR[info.world.floor || 'cloud'](c, P, rng); (PROPS[info.world.id] || (() => {}))(c, P); cv2._P = P; cv2._info = info; return cv2; }   // flying levels: no sea, the plane flies over a cloud / earth / nebula floor
   const wg = c.createLinearGradient(0, HZ, 0, H); wg.addColorStop(0, mix(P.water, P.sky[5], .5)); wg.addColorStop(.18, P.water); wg.addColorStop(1, mix(P.water, '#070A24', .55));
   c.fillStyle = wg; c.fillRect(0, HZ, W, H - HZ);
   c.save(); c.beginPath(); c.rect(0, HZ, W, 150); c.clip(); c.globalAlpha = .22; c.translate(0, HZ * 2); c.scale(1, -1);       // skyline reflection
@@ -1032,6 +1155,66 @@ function drawVan(c, len, dir, rot, glowCol, veh, t = 0) {
   for (const wx of len > 150 ? [-h + 24, 0, h - 20] : [-h + 22, h - 20]) {
     c.fillStyle = INK; circ(c, wx, -9, 10); c.fillStyle = veh.hub; circ(c, wx, -9, 4.5);
     c.strokeStyle = INK; c.lineWidth = 1.5; c.beginPath(); c.moveTo(wx + Math.cos(rot) * 4, -9 + Math.sin(rot) * 4); c.lineTo(wx - Math.cos(rot) * 4, -9 - Math.sin(rot) * 4); c.stroke(); c.lineWidth = 3;
+  }
+  c.restore();
+}
+/* ---- the player's aircraft for the flying levels: biplane (30-39), jet (40-49), space plane (50+). Same catch hopper size and height as the van. ---- */
+function drawBin(c, x0, w) {
+  c.lineWidth = 3; c.strokeStyle = INK; c.fillStyle = TEAL; rr(c, x0, -66, w, 16, 4); c.fill(); c.stroke();
+  c.fillStyle = CYAN; rr(c, x0, -58, w, 9, 3); c.fill(); c.stroke(); c.fillStyle = '#0B5C58'; c.fillRect(x0 + 5, -64, w - 10, 4);
+}
+function drawPlane(c, tier, dir, t, veh, bank, glowCol, thrust) {
+  veh = veh || VEHICLES[0]; const B = veh.body, A = veh.stripe, wing = mix(B, '#FFFFFF', .28), shade = mix(B, '#000000', .25);
+  c.save(); c.scale(dir, 1); c.translate(0, -34); c.rotate(bank); c.translate(0, 34); c.lineJoin = 'round'; c.lineCap = 'round'; c.strokeStyle = INK; c.lineWidth = 3;
+  if (glowCol) glow(c, 0, -36, 80, glowCol, .32);
+  if (tier === 0) {                                                                            // ---- biplane with a spinning propeller
+    c.fillStyle = shade; c.beginPath(); c.moveTo(-46, -30); c.lineTo(-58, -52); c.lineTo(-40, -38); c.closePath(); c.fill(); c.stroke(); rr(c, -54, -32, 18, 5, 2); c.fill(); c.stroke();     // tail
+    c.strokeStyle = INK; c.lineWidth = 2.4; c.beginPath(); c.moveTo(-18, -52); c.lineTo(-20, -14); c.moveTo(20, -52); c.lineTo(22, -14); c.stroke();                                           // struts
+    c.lineWidth = 3; c.fillStyle = wing; rr(c, -26, -16, 56, 5, 2.5); c.fill(); c.stroke();                                                                                                      // lower wing
+    c.fillStyle = B; c.beginPath(); c.moveTo(-46, -30); c.quadraticCurveTo(-30, -42, 0, -42); c.quadraticCurveTo(34, -42, 44, -33); c.lineTo(44, -21); c.quadraticCurveTo(10, -11, -30, -21); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = A; c.fillRect(-26, -32, 62, 4); c.fillStyle = '#1B2A66'; c.beginPath(); c.ellipse(12, -42, 11, 6, 0, Math.PI, 0); c.fill(); c.stroke(); c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(6, -46, 8, 2);        // stripe + cockpit
+    c.fillStyle = wing; rr(c, -30, -54, 64, 6, 3); c.fill(); c.stroke();                                                                                                                          // upper wing
+    c.fillStyle = INK; circ(c, -2, -6, 6); circ(c, 22, -6, 6); c.strokeStyle = INK; c.lineWidth = 2.4; c.beginPath(); c.moveTo(-2, -12); c.lineTo(-2, -20); c.moveTo(22, -12); c.lineTo(22, -20); c.stroke();   // wheels
+    c.fillStyle = '#9AA3D6'; circ(c, -2, -6, 2.4); circ(c, 22, -6, 2.4);
+    c.fillStyle = '#C9D3F0'; circ(c, 46, -28, 4); c.save(); c.translate(48, -28); c.scale(1, .25 + Math.abs(Math.sin(t * 60)) * .75); c.fillStyle = 'rgba(230,236,255,.55)'; c.beginPath(); c.ellipse(0, 0, 3.4, 20, 0, 0, TAU); c.fill(); c.restore();   // prop blur
+    drawBin(c, -40, 54);
+  } else if (tier === 1) {                                                                       // ---- jet with afterburner
+    const fl = (thrust ? 30 : 16) + Math.random() * 10; const fg = c.createLinearGradient(-52, 0, -52 - fl, 0); fg.addColorStop(0, '#FFFFFF'); fg.addColorStop(.3, '#7DE8FF'); fg.addColorStop(1, 'rgba(60,140,255,0)'); c.fillStyle = fg; poly(c, [-52, -31, -52 - fl, -26, -52, -21]); glow(c, -54, -26, 24, '#7DE8FF', .6);
+    c.fillStyle = shade; poly(c, [-10, -22, -42, -4, -54, -4, -28, -22]); c.stroke();                                  // swept wing
+    c.fillStyle = shade; poly(c, [-44, -38, -58, -64, -42, -64, -26, -40]); c.stroke(); c.fillStyle = A; poly(c, [-48, -48, -54, -60, -46, -60, -38, -48]);                // tail fin
+    c.fillStyle = B; c.beginPath(); c.moveTo(-54, -26); c.lineTo(-44, -42); c.lineTo(18, -43); c.quadraticCurveTo(44, -36, 58, -26); c.quadraticCurveTo(44, -16, 18, -13); c.lineTo(-44, -13); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = A; c.fillRect(-36, -30, 56, 4); c.fillStyle = '#0B0B26'; c.beginPath(); c.moveTo(18, -43); c.quadraticCurveTo(34, -44, 40, -33); c.lineTo(14, -33); c.closePath(); c.fill(); c.stroke(); c.fillStyle = 'rgba(125,232,255,.5)'; c.fillRect(20, -41, 10, 2);   // canopy
+    c.fillStyle = '#26264A'; rr(c, -58, -32, 10, 12, 3); c.fill(); c.stroke();                                         // nozzle
+    c.fillStyle = shade; rr(c, -34, -50, 42, 10, 3); c.fill(); c.stroke(); drawBin(c, -40, 54);
+  } else {                                                                                       // ---- space plane
+    const fl = (thrust ? 34 : 20) + Math.random() * 12; for (const y of [-34, -26, -18]) { const fg = c.createLinearGradient(-52, 0, -52 - fl, 0); fg.addColorStop(0, '#FFFFFF'); fg.addColorStop(.35, '#9FD8FF'); fg.addColorStop(1, 'rgba(120,120,255,0)'); c.fillStyle = fg; poly(c, [-52, y - 4, -52 - fl, y, -52, y + 4]); } glow(c, -56, -26, 30, '#9FD8FF', .55);
+    c.fillStyle = shade; poly(c, [-6, -20, -46, -2, -54, -2, -42, -20]); c.stroke();                                    // delta wing
+    c.fillStyle = B; poly(c, [-42, -42, -56, -70, -36, -70, -24, -42]); c.stroke(); c.fillStyle = A; poly(c, [-44, -50, -52, -64, -42, -64, -34, -50]);                       // tail fin
+    c.fillStyle = B; c.beginPath(); c.moveTo(-52, -24); c.lineTo(-42, -42); c.lineTo(28, -43); c.quadraticCurveTo(52, -36, 58, -24); c.quadraticCurveTo(50, -13, 28, -12); c.lineTo(-44, -12); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#26264A'; c.beginPath(); c.moveTo(-44, -14); c.lineTo(26, -13); c.quadraticCurveTo(46, -14, 54, -22); c.lineTo(-48, -22); c.closePath(); c.fill();                       // heat-shield belly
+    c.fillStyle = '#0B0B26'; c.beginPath(); c.moveTo(34, -42); c.quadraticCurveTo(52, -36, 58, -26); c.lineTo(38, -26); c.closePath(); c.fill(); c.stroke();                          // nose
+    c.fillStyle = '#1B2A66'; for (let i = 0; i < 3; i++) { rr(c, 10 + i * 8, -40, 6, 6, 1.5); c.fill(); }
+    c.fillStyle = A; c.fillRect(-30, -30, 52, 3);
+    c.fillStyle = '#26264A'; for (const y of [-34, -26, -18]) { rr(c, -58, y - 3, 8, 7, 2); c.fill(); }
+    drawBin(c, -40, 54); c.fillStyle = wing; c.lineWidth = 2.4; poly(c, [-42, -50, -48, -62, -40, -52]); c.stroke(); poly(c, [16, -50, 22, -62, 14, -52]); c.stroke();                // payload bay doors, open
+  }
+  c.restore();
+}
+/* hostile aircraft in the air levels: knock parcels away */
+function drawEnemyPlane(c, type, dir, t) {
+  c.save(); c.scale(dir, 1); c.lineJoin = 'round'; c.lineCap = 'round'; c.strokeStyle = INK; c.lineWidth = 2.6;
+  if (type === 'heli') {
+    c.fillStyle = '#E5352F'; c.beginPath(); c.ellipse(0, 0, 20, 11, 0, 0, TAU); c.fill(); c.stroke(); c.fillRect(-36, -3, 22, 5); c.strokeRect(-36, -3, 22, 5); poly(c, [-38, -14, -32, -3, -36, -3], '#E5352F'); c.stroke();
+    c.fillStyle = '#1B2A66'; c.beginPath(); c.ellipse(8, -2, 9, 6, 0, 0, TAU); c.fill(); c.stroke(); c.strokeStyle = INK; c.lineWidth = 3; c.beginPath(); c.moveTo(0, -12); c.lineTo(0, -16); c.stroke();
+    c.fillStyle = 'rgba(200,210,240,.5)'; c.beginPath(); c.ellipse(0, -17, 30, 3 + Math.abs(Math.sin(t * 40)) * 2, 0, 0, TAU); c.fill(); c.strokeStyle = INK; c.lineWidth = 2; c.beginPath(); c.moveTo(-8, 14); c.lineTo(18, 14); c.stroke();
+  } else if (type === 'jet') {
+    c.fillStyle = '#8890B0'; poly(c, [-10, 0, -26, 14, -34, 14, -22, 0]); c.stroke(); c.fillStyle = '#5A6288'; poly(c, [-30, -2, -38, -16, -28, -16, -18, -2]); c.stroke();
+    c.fillStyle = '#C9D3F0'; c.beginPath(); c.moveTo(-36, 0); c.lineTo(-28, -8); c.lineTo(14, -8); c.quadraticCurveTo(30, -4, 38, 2); c.quadraticCurveTo(26, 8, 10, 8); c.lineTo(-30, 8); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#FF4D6D'; c.fillRect(-20, -2, 30, 3); c.fillStyle = '#26264A'; c.beginPath(); c.ellipse(12, -6, 7, 3.5, 0, Math.PI, 0); c.fill(); glow(c, -40, 2, 14, '#FFB347', .8);
+  } else {
+    c.fillStyle = '#FFD23F'; c.beginPath(); c.moveTo(-30, 0); c.quadraticCurveTo(-18, -9, 4, -9); c.quadraticCurveTo(22, -8, 28, -1); c.lineTo(28, 7); c.quadraticCurveTo(0, 12, -30, 6); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#E5352F'; rr(c, -14, -16, 38, 4, 2); c.fill(); c.stroke(); rr(c, -14, 4, 38, 4, 2); c.fill(); c.stroke(); poly(c, [-30, 0, -38, -14, -24, -4], '#E5352F'); c.stroke();
+    c.fillStyle = '#1B2A66'; c.beginPath(); c.ellipse(6, -8, 7, 4, 0, Math.PI, 0); c.fill(); c.stroke(); c.save(); c.translate(30, 2); c.scale(1, .3 + Math.abs(Math.sin(t * 60)) * .7); c.fillStyle = 'rgba(230,236,255,.6)'; c.beginPath(); c.ellipse(0, 0, 3, 14, 0, 0, TAU); c.fill(); c.restore();
   }
   c.restore();
 }
@@ -1142,25 +1325,25 @@ function resetField() {
     stats: { caught: 0, bestCombo: 0, turbo: 0 } });
   G.drone = { x: 195, y: CONFIG.drone.y, tilt: 0, cool: 1.2, next: null };
   const hc = G.cfg; G.tank = CONFIG.cannon.tank; G.hz = { gulls: [], oil: [], bolts: [], fog: [], tides: [], rogue: null,
-    kong: hc.kong ? { ph: 'idle', t: rnd(hc.kong.gap[0], hc.kong.gap[1]) * .8, x: Math.random() < .5 ? 70 : 320, hold: 0, u: 0, px: 0, py: 0, sc: 1, breath: 0, flinch: 0 } : null,
+    kong: hc.kong ? { kind: hc.kong.kind, ph: 'idle', t: rnd(hc.kong.gap[0], hc.kong.gap[1]) * .8, x: Math.random() < .5 ? 70 : 320, hold: 0, u: 0, px: 0, py: 0, sc: 1, breath: 0, flinch: 0, steal: 0, hits: 0, wt: 0 } : null,
     t: { gull: hc.gull ? rnd(4, 8) : 0, oil: hc.oil ? rnd(5, 9) : 0, bolt: hc.bolt ? rnd(6, 10) : 0, fog: hc.fog ? rnd(8, 13) : 0, tide: hc.tide ? rnd(6, 10) : 0, rogue: hc.rogue ? rnd(6, 11) : 0 } };
   G.stunT = 0; G.jets = []; G.cannon = { a: -1.2, cool: 0 }; G.nextHeart = 10; G.storm = null; G.stormWind = 0; G.hz.t.storm = hc.storm ? rnd(9, 15) : 0;
   const g = G.cfg.pelGap; G.pel = { ph: 'perch', t: rnd(g[0], g[1]) * .6, ev: null, x: CONFIG.pelican.perchX, y: CONFIG.pelican.perchY, tgt: null, flap: 0, carry: false, fx: 0, fy: 0 };
 }
 function startLevel(L, mode) {
   Sfx.init();
-  G.demo = false; G.L = L; G.info = levelInfo(L); G.cfg = levelCfg(L);
+  G.demo = false; G.L = L; G.info = levelInfo(L); G.cfg = levelCfg(L); G.air = !!G.info.world.air;
   if (mode === 'fresh') G.score = 0; else if (mode === 'retry') G.score = G.levelStartScore;
   G.levelStartScore = G.score;
   resetField(); setBG(L);
-  G.banner = CONFIG.banner; G.bannerTitle = 'LEVEL ' + L; G.bannerSub = G.info.world.name.toUpperCase() + ' · ' + TOD[G.info.tod].name; G.bannerTip = INTRO[L] || (G.cfg.kong ? 'BOSS: the giant ape returns' : L === G.info.world.first ? 'Welcome to ' + G.info.world.name : '');
+  G.banner = CONFIG.banner; G.bannerTitle = 'LEVEL ' + L; G.bannerSub = G.info.world.name.toUpperCase() + ' · ' + TOD[G.info.tod].name; G.bannerTip = G.cfg.kong ? BOSS_TIP[G.cfg.kong.kind] : INTRO[L] || (L === G.info.world.first ? 'Welcome to ' + G.info.world.name : '');
   G.state = 'playing'; show(null); inp.ptrs.clear(); syncInput();
   Save.d.last = L; Save.flush();
 }
 function startDemo() {
   const L = clamp(Save.d.last || 1, 1, CONFIG.levels.total);
-  G.demo = true; G.L = L; G.info = levelInfo(L);
-  G.cfg = Object.assign(levelCfg(Math.min(L, 4)), { quota: 1e9, pelGap: [5, 9], wind: 0, base: 135, snatch: false });
+  G.demo = true; G.L = L; G.info = levelInfo(L); G.air = !!G.info.world.air;
+  G.cfg = Object.assign(levelCfg(Math.min(L, 4)), { quota: 1e9, pelGap: [5, 9], wind: 0, base: 135, snatch: false, kong: null, fog: null, storm: null });
   resetField(); setBG(L); G.banner = 0; G.state = 'title'; G.score = 0;
 }
 
@@ -1205,6 +1388,8 @@ function release(n) {
 }
 function updateDrone(dt) {
   const d = G.drone, cfg = G.cfg; d.y = CONFIG.drone.y + Math.sin(G.time * 2.4) * 4;
+  if (d.dropIn > 0) { d.dropIn = Math.max(0, d.dropIn - dt * 1.1); d.y -= d.dropIn * d.dropIn * 320; }          // after a theft the drone flies back in from the top
+  if (d.absent) { d.jx = 0; d.jy = 0; d.jvx = 0; return; }
   {                                                                        // the swinging ape drags the drone side to side; the sway eases in on the grab and out on the release
     const k = G.hz.kong, hold = apeHolding(), pj = d.jx || 0;
     if (hold) { k.grip = smooth(k.grip || 0, 1, dt, 5); d.jx = Math.sin(k.th) * 50 * k.grip + Math.sin(G.time * 23) * 1.2 * k.grip; d.jy = (Math.abs(Math.sin(k.th)) * 10 + Math.sin(G.time * 31) * 2) * k.grip; }
@@ -1300,7 +1485,7 @@ function updateItems(dt) {
       if (Math.abs(p.x - G.vanX) <= catchHalf()) { p.caught = true; p.ct = 0; p.cx0 = p.x; p.cy0 = p.y; onCatch(p); }
       else onFall(p);
     }
-    if (p.passed && !p.caught && p.y > 748) { splash(p.x, 744); p.dead = true; }
+    if (p.passed && !p.caught && p.y > (G.air ? 836 : 748)) { if (G.air) sparks(p.x, 826, 3, [WHITE, '#C9D3F0']); else splash(p.x, 744); p.dead = true; }
   }
   G.parcels = G.parcels.filter(p => !p.dead); G.fish = G.fish.filter(p => !p.dead);
 }
@@ -1340,8 +1525,8 @@ function startTurbo() {
 const cannonPos = () => [G.vanX + G.vanDir * 22, CONFIG.scene.deckY - 50 * vanScale() - 4];
 function cannonTarget() {
   const p = G.pel, r = G.hz.rogue, k = G.hz.kong;
-  if (G.cfg.pelican && (p.ph === 'warn' || p.ph === 'snatch' || p.ph === 'out')) { const perched = p.ph === 'warn'; return { kind: 'pel', x: perched ? CONFIG.pelican.perchX : p.x, y: perched ? CONFIG.pelican.perchY - 28 : p.y - 16 }; }
-  if (k && k.ph === 'cling') return { kind: 'kong', x: (k.gx + k.px) / 2, y: (k.gy + k.py) / 2, ref: k };
+  if (G.cfg.pelican && (p.ph === 'warn' || p.ph === 'snatch' || p.ph === 'out')) { const perched = p.ph === 'warn' && !G.air; return { kind: 'pel', x: perched ? CONFIG.pelican.perchX : p.x, y: perched ? CONFIG.pelican.perchY - 28 : p.y - 16 }; }
+  if (k && k.ph === 'cling') return k.kind === 'alien' ? { kind: 'kong', x: k.px, y: k.py - 26, ref: k } : { kind: 'kong', x: (k.gx + k.px) / 2, y: (k.gy + k.py) / 2, ref: k };
   if (r && r.ph === 'fly') return { kind: 'rogue', x: r.x, y: r.y, ref: r };
   let best = null, bd = 1e9;                                              // the seagull closest to a falling parcel
   for (const g of G.hz.gulls) { if (g.flee || g.x < -10 || g.x > W + 10) continue; let d = 500; for (const q of G.parcels) if (!q.passed) d = Math.min(d, Math.hypot(q.x - g.x, q.y - g.y)); if (d < bd) { bd = d; best = g; } }
@@ -1355,7 +1540,11 @@ function cannonFire(tg, cool) {
     sparks(tg.x, tg.y, 8, [WHITE, '#C9D3F0']);
   } else if (tg.kind === 'rogue') tg.ref.ph = 'flee';
   else if (tg.kind === 'gull') { tg.ref.flee = true; pts = 10; sparks(tg.x, tg.y, 8, [WHITE, '#C9D3F0']); }
-  else if (tg.kind === 'kong') { tg.ref.hold -= 1.4; tg.ref.flinch = .4; label = 'ROAR!'; if (tg.ref.hold <= 0) apeLetGo(tg.ref); }
+  else if (tg.kind === 'kong') {
+    const k = tg.ref; k.flinch = .4;
+    if (k.kind === 'alien') { k.steal = Math.max(0, k.steal - 1.8); k.hits++; label = 'ZAP!'; if (k.hits >= 3) alienFlee(k); }      // three hits blast him off the drone
+    else { k.hold -= 1.4; label = 'ROAR!'; if (k.hold <= 0) apeLetGo(k); }
+  }
   G.score += pts; pop(label + ' +' + pts, tg.x, tg.y - 24, '#8FE8FF');
 }
 function sprayNow() {
@@ -1384,8 +1573,37 @@ function apeArmTarget(k, s) {                                                 //
   const side = Math.sin(k.breath * 3) > 0 ? 1 : -1, on = s === side ? Math.max(0, Math.sin(k.breath * 6)) : 0;
   return [lerp(s * 96, s * 94, on), lerp(-110, -86, on), lerp(s * 86, s * 22, on), lerp(-58, -116, on)];
 }
+/* ---- alien boss (air levels, every 6th from 30): lands on top of the drone and tries to steal it. Spray him 3 times to blast him off. ---- */
+function alienFlee(k) { k.ph = 'fall'; k.vy = -260; k.vx = (k.px < W / 2 ? -1 : 1) * 160; pop('BLASTED OFF!', k.px, k.py - 30, CYAN, 22); Sfx.play('bomb'); }
+function updateAlien(dt) {
+  const k = G.hz.kong, d = G.drone, cfg = G.cfg.kong, play = G.state === 'playing', gap = cfg.gap;
+  k.breath += dt; k.flinch = Math.max(0, k.flinch - dt);
+  switch (k.ph) {
+    case 'idle': k.px = k.x + Math.sin(k.breath * 1.1) * 16; k.py = 330 + Math.sin(k.breath * 1.6) * 10; k.sc = .5; k.t -= dt; if (k.t <= 0 && play && G.banner <= .6) { k.ph = 'roar'; k.t = 1.3; Sfx.play('warn'); } break;
+    case 'roar': k.t -= dt; k.px = k.x + Math.sin(k.breath * 30) * 3; k.py = 330 + Math.sin(k.breath * 1.6) * 10; if (k.t <= 0) { k.ph = 'leap'; k.u = 0; k.x0 = k.px; k.y0 = k.py; } break;
+    case 'leap': {
+      k.u = Math.min(1, k.u + dt / .85); const e = k.u * k.u * (3 - 2 * k.u);
+      k.px = lerp(k.x0, d.x, e); k.py = lerp(k.y0, d.y - 18, e) - 70 * Math.sin(Math.PI * k.u); k.sc = lerp(.5, .62, e);
+      if (k.u >= 1) { k.ph = 'cling'; k.steal = 0; k.hits = 0; k.grip = 0; k.wt = 0; G.shake = REDUCED ? 0 : .3; G.flash = .35; G.flashCol = '120,255,160'; Sfx.play('bomb'); pop('ALIEN ON THE DRONE!', d.x, d.y + 70, '#9FFFB0', 22); sparks(d.x, d.y - 10, 18, ['#7DFF9A', WHITE, CYAN]); }
+    } break;
+    case 'cling': {
+      k.steal += dt; k.wt += dt; k.sc = .62;
+      k.th = Math.sin(k.wt * 1.6) * .55 + Math.sin(k.wt * 3.9 + 1) * .3 + Math.sin(k.wt * .7) * .25;       // he wrestles the controls: the drone lurches unpredictably
+      k.px = d.x + d.jx; k.py = d.y - 18 + d.jy; k.gx = k.px; k.gy = k.py;
+      if (k.steal >= cfg.need) {                                                                              // stolen!
+        k.ph = 'abduct'; k.t = 1.5; k.vy = -40; d.absent = true; d.next = null; k.grip = 0; G.shake = REDUCED ? 0 : .4; G.flash = .6; G.flashCol = '120,255,160';
+        pop('DRONE STOLEN!', d.x, d.y + 60, '#FF8FB0', 26); Sfx.play('miss'); sparks(d.x, d.y, 24, ['#7DFF9A', WHITE]); loseLife();
+      }
+    } break;
+    case 'abduct': k.t -= dt; k.vy -= 520 * dt; k.py += k.vy * dt; k.sc = lerp(k.sc, .5, Math.min(1, dt * 2));
+      if (k.t <= 0 || k.py < -80) { k.ph = 'idle'; k.t = rnd(gap[0], gap[1]); k.x = Math.random() < .5 ? 70 : 320; d.absent = false; d.dropIn = 1; d.cool = 1.2; d.next = null; } break;
+    case 'fall':                                                                                              // sprayed off: he rockets away
+      k.vy -= 400 * dt; k.px += k.vx * dt; k.py += k.vy * dt; k.sc = lerp(k.sc, .45, Math.min(1, dt * 2));
+      if (k.py < -90 || k.px < -90 || k.px > W + 90) { k.ph = 'idle'; k.t = rnd(gap[0], gap[1]); k.x = Math.random() < .5 ? 70 : 320; } break;
+  }
+}
 function updateKong(dt) {
-  const k = G.hz.kong; if (!k) return; k.breath += dt; k.flinch = Math.max(0, k.flinch - dt);
+  const k = G.hz.kong; if (!k) return; if (k.kind === 'alien') { updateAlien(dt); return; } k.breath += dt; k.flinch = Math.max(0, k.flinch - dt);
   const d = G.drone, play = G.state === 'playing', gap = G.cfg.kong.gap;
   if (!k.A) { k.A = { '-1': apeArmTarget(k, -1).slice(), '1': apeArmTarget(k, 1).slice() }; k.mouth = 0; k.hup = 0; k.lean = 0; k.push = 0; }
   for (const s of [-1, 1]) { const T = apeArmTarget(k, s), a = k.A[s]; for (let i = 0; i < 4; i++) a[i] = smooth(a[i], T[i], dt, k.ph === 'idle' ? 14 : 9); }      // arms, mouth, head and lean all ease between poses
@@ -1487,7 +1705,44 @@ function drawApe(c, t, k) {
   if ((idle || k.ph === 'roar') && !k.noClip) { c.save(); c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 2; c.beginPath(); c.ellipse(k.px, 506, 74 * k.sc, 7, 0, 0, TAU); c.stroke(); c.restore(); }
   if (k.ph === 'roar' && !k.noClip) { const on = Math.sin(t * 20) > -.3; if (on) { c.save(); c.translate(k.px, k.py - 262); c.fillStyle = '#FF4D6D'; c.strokeStyle = INK; c.lineWidth = 3; circ(c, 0, 0, 17); c.stroke(); txt(c, '!', 0, 9, `700 26px ${FONT}`, WHITE, 'center'); c.restore(); } }
 }
-function drawKong(c, t) { const k = G.hz.kong; if (k) drawApe(c, t, k); }
+function drawAlien(c, t, k) {
+  const seated = k.ph === 'cling', abduct = k.ph === 'abduct', ratio = seated ? clamp(k.steal / G.cfg.kong.need, 0, 1) : 0;
+  const skin = c.createLinearGradient(0, -74, 0, -30); skin.addColorStop(0, '#B6FFC0'); skin.addColorStop(1, '#4FD16A'); const suit = '#C9D3F0';
+  c.save(); c.translate(k.px, k.py); c.scale(k.sc, k.sc); c.lineJoin = 'round'; c.lineCap = 'round'; c.strokeStyle = INK; c.lineWidth = 3;
+  const wob = Math.sin(k.breath * 5) * 2, fl = k.flinch > 0;
+  if (!seated) {                                                             // flying saucer
+    glow(c, 0, 14, 80, '#7DFF9A', .22);
+    if (abduct) { const bg = c.createLinearGradient(0, 20, 0, 140); bg.addColorStop(0, 'rgba(125,255,154,.45)'); bg.addColorStop(1, 'rgba(125,255,154,0)'); c.fillStyle = bg; poly(c, [-28, 20, 28, 20, 60, 140, -60, 140]); }
+    const sg = c.createLinearGradient(0, 4, 0, 26); sg.addColorStop(0, '#E8EEFF'); sg.addColorStop(1, '#7A82A8'); c.fillStyle = sg; c.beginPath(); c.ellipse(0, 16, 54, 14, 0, 0, TAU); c.fill(); c.stroke();
+    for (let i = 0; i < 6; i++) { const x = -40 + i * 16, on = Math.sin(t * 10 + i * 1.3) > 0; c.fillStyle = on ? '#FFE27D' : '#FF5C8A'; circ(c, x, 18 + Math.abs(x) * .04, 3); }
+    c.fillStyle = 'rgba(160,230,255,.35)'; c.beginPath(); c.ellipse(0, 8, 26, 22, 0, Math.PI, 0); c.fill(); c.stroke();
+  }
+  c.save(); const bs = seated ? 1 : .8; c.translate(0, seated ? 0 : 6); c.scale(bs, bs);
+  if (seated) for (const s of [-1, 1]) { c.strokeStyle = INK; c.lineWidth = 12; c.beginPath(); c.moveTo(s * 8, -6); c.quadraticCurveTo(s * 26, -2, s * 30, 20 + Math.sin(t * 7 + s) * 3); c.stroke(); c.strokeStyle = suit; c.lineWidth = 7; c.stroke(); c.fillStyle = '#7A82A8'; circ(c, s * 30, 22 + Math.sin(t * 7 + s) * 3, 5); }   // legs hanging over the drone
+  c.strokeStyle = INK; c.lineWidth = 3; c.fillStyle = suit; rr(c, -14, -36, 28, 38, 11); c.fill(); c.stroke();                                                   // spacesuit
+  c.fillStyle = '#FFB347'; circ(c, 0, -20, 4 + Math.sin(t * 8) * .8); glow(c, 0, -20, 14, '#FFB347', .6); c.fillStyle = '#7A82A8'; c.fillRect(-14, -8, 28, 4);
+  for (const s of [-1, 1]) { c.strokeStyle = INK; c.lineWidth = 10; c.beginPath(); c.moveTo(s * 12, -30); c.quadraticCurveTo(s * 26, -22, s * (seated ? 24 : 20), seated ? 2 : -4 + Math.sin(t * 9 + s) * 4); c.stroke(); c.strokeStyle = suit; c.lineWidth = 6; c.stroke(); c.fillStyle = '#6BE07F'; circ(c, s * (seated ? 24 : 20), seated ? 4 : -2 + Math.sin(t * 9 + s) * 4, 5); c.strokeStyle = INK; c.lineWidth = 2; c.stroke(); }
+  c.strokeStyle = INK; c.lineWidth = 3;
+  for (const s of [-1, 1]) { c.beginPath(); c.moveTo(s * 8, -70); c.quadraticCurveTo(s * 14, -84, s * (16 + wob * s * .5), -94); c.stroke(); c.fillStyle = s < 0 ? '#FF5C8A' : '#FFE27D'; circ(c, s * (16 + wob * s * .5), -95, 4); glow(c, s * (16 + wob * s * .5), -95, 14, c.fillStyle, .8); }   // antennae
+  c.fillStyle = skin; c.beginPath(); c.moveTo(0, -78); c.bezierCurveTo(24, -78, 24, -58, 14, -42); c.bezierCurveTo(8, -34, -8, -34, -14, -42); c.bezierCurveTo(-24, -58, -24, -78, 0, -78); c.closePath(); c.fill(); c.stroke();     // head
+  for (const s of [-1, 1]) { c.fillStyle = '#0B0B26'; c.beginPath(); c.moveTo(s * 3, -56); c.quadraticCurveTo(s * 12, -66, s * 18, -58); c.quadraticCurveTo(s * 14, -48, s * 5, -50); c.closePath(); c.fill(); c.fillStyle = 'rgba(255,255,255,.85)'; circ(c, s * 11, -57, 2); }
+  c.strokeStyle = INK; c.lineWidth = 2; c.beginPath(); c.moveTo(-5, -42); c.quadraticCurveTo(0, k.flinch > 0 ? -45 : -39, 5, -42); c.stroke();
+  c.strokeStyle = 'rgba(210,245,255,.8)'; c.lineWidth = 2.4; c.fillStyle = 'rgba(160,220,255,.12)'; c.beginPath(); c.arc(0, -58, 30, 0, TAU); c.fill(); c.stroke(); c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 3; c.beginPath(); c.arc(0, -58, 24, Math.PI * 1.1, Math.PI * 1.4); c.stroke();   // bubble helmet
+  if (fl) { c.fillStyle = 'rgba(190,255,230,.4)'; c.beginPath(); c.arc(0, -40, 46, 0, TAU); c.fill(); }
+  c.restore();
+  if (abduct) { c.save(); c.translate(0, 74); c.scale(.8 / k.sc, .8 / k.sc); drawDrone(c, t, Math.sin(t * 9) * .25); c.restore(); }
+  c.restore();
+  if (seated) {                                                              // tractor ring and the "stolen" meter
+    const d = G.drone, cx = d.x + d.jx, cy = d.y + d.jy, p = .5 + .5 * Math.sin(t * 8);
+    c.save(); c.strokeStyle = rgba('#7DFF9A', .25 + .55 * ratio); c.lineWidth = 2 + 3 * ratio; c.beginPath(); c.ellipse(cx, cy + 6, 62 + 6 * p, 22 + 3 * p, 0, 0, TAU); c.stroke(); glow(c, cx, cy + 6, 90, '#7DFF9A', .15 + .25 * ratio);
+    const bx = cx - 42, by = cy + 52; rr(c, bx, by, 84, 11, 5); c.fillStyle = 'rgba(11,16,48,.85)'; c.fill(); c.strokeStyle = INK; c.lineWidth = 2; c.stroke();
+    const col = ratio < .5 ? '#7DFF9A' : ratio < .8 ? '#FFD23F' : '#FF4D6D'; rr(c, bx + 2, by + 2, Math.max(6, 80 * ratio), 7, 3.5); c.fillStyle = col; c.fill();
+    if (ratio > .45 && Math.sin(t * 14) > -.2) txt(c, 'STEALING!  SPRAY HIM', cx, by + 28, `700 12px ${FONT}`, ratio > .8 ? '#FF8FB0' : '#E6FFE9', 'center');
+    c.restore();
+  }
+}
+function drawKong(c, t) { const k = G.hz.kong; if (!k) return; if (k.kind === 'alien') { if (k.ph !== 'cling') drawAlien(c, t, k); } else drawApe(c, t, k); }
+function drawAlienSeated(c, t) { const k = G.hz.kong; if (k && k.kind === 'alien' && k.ph === 'cling') drawAlien(c, t, k); }
 function drawCannon(c, t) {
   const [mx, my] = cannonPos(); c.save(); c.translate(mx, my); c.lineJoin = 'round';
   c.fillStyle = '#C9D3F0'; c.strokeStyle = INK; c.lineWidth = 2; rr(c, -7, -1, 14, 6, 2); c.fill(); c.stroke();
@@ -1521,6 +1776,26 @@ function updatePelican(dt) {
     case 'back': if (fly(P0.perchX, P0.perchY, 520) < 3) { p.ph = 'perch'; p.carry = false; p.t = rnd(cfg.pelGap[0], cfg.pelGap[1]); } break;
   }
 }
+/* In the air the pelican is replaced by another aircraft: "!" at the edge, then it tears across at a parcel's height and knocks whatever it hits sideways. Fish-run decoys become balloons. */
+function updateAirStrike(dt) {
+  const p = G.pel, cfg = G.cfg; if (!cfg.pelican) return; p.flap += dt * 20;
+  const gapNext = () => rnd(cfg.pelGap[0], cfg.pelGap[1]), live2 = () => G.state === 'playing' || G.demo;
+  switch (p.ph) {
+    case 'perch': p.t -= dt; if (p.t <= 0 && G.banner <= 0 && live2()) { p.ph = 'warn'; p.t = 1.15; p.dir = Math.random() < .5 ? 1 : -1; p.x = p.dir > 0 ? 34 : W - 34; p.tgt = snatchTarget(); p.y = p.tgt ? clamp(p.tgt.y, 210, 640) : 330; Sfx.play('warn'); } break;
+    case 'warn': p.t -= dt; if (p.tgt && !p.tgt.dead && !p.tgt.passed) p.y = lerp(p.y, clamp(p.tgt.y + p.tgt.vy * .5, 210, 640), Math.min(1, dt * 6));
+      if (p.t <= 0) { if (p.tgt && !p.tgt.dead && !p.tgt.passed && cfg.snatch && Math.random() < cfg.snatchP) { p.ph = 'snatch'; p.x = p.dir > 0 ? -60 : W + 60; p.hit = new Set(); } else { p.ph = 'out'; p.x = p.dir > 0 ? -60 : W + 60; p.y = 250; p.fishLeft = cfg.fishVolley; p.dropT = .2; } Sfx.play('squawk'); } break;
+    case 'snatch':
+      p.x += p.dir * 560 * dt; if (p.tgt && !p.tgt.dead && !p.tgt.passed) p.y = lerp(p.y, p.tgt.y, Math.min(1, dt * 7));
+      for (const q of G.parcels.concat(G.fish)) if (!q.passed && !q.caught && !p.hit.has(q.id) && Math.abs(q.x - p.x) < 34 && Math.abs(q.y - p.y) < 28) {
+        p.hit.add(q.id); q.vx = (q.vx || 0) + p.dir * 380; sparks(q.x, q.y, 8, [WHITE, '#C9D3F0', AMBER_L]); pop('KNOCKED!', q.x, q.y - 24, '#FF8FB0'); Sfx.play('squawk'); }
+      if (p.x < -90 || p.x > W + 90) { p.ph = 'perch'; p.t = gapNext(); } break;
+    case 'out':
+      p.x += p.dir * 430 * dt; p.dropT -= dt;
+      if (p.dropT <= 0 && p.fishLeft > 0 && p.x > 40 && p.x < W - 40) { G.fish.push({ id: ++G.ids, kind: 'fish', x: p.x, y: p.y + 12, vy: (cfg.base + 20) * .9, h: 24, passed: false, caught: false, dead: false, ct: 0, wk: 1, s: 1 }); p.fishLeft--; p.dropT = .4; }
+      if (p.x < -90 || p.x > W + 90) { p.ph = 'perch'; p.t = gapNext(); } break;
+    case 'back': p.y -= 280 * dt; p.x += p.dir * 140 * dt; if (p.y < -60) { p.ph = 'perch'; p.t = gapNext(); } break;      // sprayed: it veers off upward
+  }
+}
 function levelClear() {
   if (G.state !== 'playing') return;
   G.state = 'clear'; G.endT = 1.1;
@@ -1548,22 +1823,22 @@ function pop(text, x, y, col, size) { G.pops.push({ text, x: clamp(x, 40, W - 40
 function updateHazards(dt) {
   const cfg = G.cfg, h = G.hz, active = G.banner <= .6 && (G.state === 'playing' || G.demo);
   const tick = (k, gap, fn) => { if (!gap) return; h.t[k] -= dt; if (h.t[k] <= 0) { if (active) fn(); h.t[k] = rnd(gap[0], gap[1]); } };
-  tick('gull', cfg.gull, () => { const dir = Math.random() < .5 ? 1 : -1, y0 = rnd(250, 460);
-    for (let i = 0; i < cfg.gullN; i++) h.gulls.push({ id: ++G.ids, x: dir > 0 ? -30 - i * 46 : W + 30 + i * 46, y: y0 + rnd(-22, 22) + i * 10, vx: dir * rnd(110, 170), dir, flap: rnd(0, 6), hit: new Set() }); });
+  tick('gull', cfg.gull, () => { const dir = Math.random() < .5 ? 1 : -1, y0 = G.air ? rnd(230, 600) : rnd(250, 460);
+    for (let i = 0; i < cfg.gullN; i++) h.gulls.push({ id: ++G.ids, x: dir > 0 ? -30 - i * 60 : W + 30 + i * 60, y: y0 + rnd(-22, 22) + i * 14, vx: dir * (G.air ? rnd(190, 270) : rnd(110, 170)), dir, flap: rnd(0, 6), hit: new Set(), air: G.air, type: pick(['prop', 'heli', 'jet']) }); });
   tick('oil', cfg.oil, () => h.oil.push({ x: rnd(50, 340), w: rnd(64, 90), life: 7, max: 7 }));
   tick('bolt', cfg.bolt, () => h.bolts.push({ x: clamp(G.vanX + rnd(-70, 70), 45, 345), t: 1.1, struck: false, age: 0, pts: null }));
   tick('tide', cfg.tide, () => { const dir = Math.random() < .5 ? 1 : -1; h.tides.push({ dir, warn: 1.3, x: dir > 0 ? -70 : W + 70, w: 120 }); });
   tick('rogue', cfg.rogue, () => { if (!h.rogue) { const dir = Math.random() < .5 ? 1 : -1; h.rogue = { ph: 'warn', t: 1.1, dir, x: dir > 0 ? -34 : W + 34, y: 262, drops: cfg.junkN, dropT: .5 }; } });
-  tick('fog', cfg.fog, () => { const dir = Math.random() < .5 ? 1 : -1; h.fog.push({ x: dir > 0 ? -100 : W + 100, y: rnd(270, 380), w: rnd(160, 230), vx: dir * rnd(25, 45) }); });
+  tick('fog', cfg.fog, () => { const dir = Math.random() < .5 ? 1 : -1; h.fog.push({ x: dir > 0 ? -100 : W + 100, y: cfg.cloudy ? rnd(280, 540) : rnd(270, 380), w: cfg.cloudy ? rnd(220, 320) : rnd(160, 230), vx: dir * rnd(25, 45) }); });
   for (const g of h.gulls) {
     g.flap += dt * 11;
     if (g.flee) { g.y -= 190 * dt; g.x += g.dir * 70 * dt; continue; }               // sprayed: the gull flaps away upward
     g.x += g.vx * dt;
-    for (const p of G.parcels.concat(G.fish)) if (!p.passed && !p.caught && !g.carry && !g.hit.has(p.id) && Math.abs(p.x - g.x) < 24 && Math.abs(p.y - g.y) < 20) {
+    for (const p of G.parcels.concat(G.fish)) if (!p.passed && !p.caught && !g.carry && !g.hit.has(p.id) && Math.abs(p.x - g.x) < (g.air ? 36 : 24) && Math.abs(p.y - g.y) < (g.air ? 24 : 20)) {
       g.hit.add(p.id);
       if (catchable(p.kind) && Math.random() < cfg.gullSteal) {                       // steal: the parcel is gone and your combo breaks
         p.dead = true; g.carry = true; G.combo = 0; G.streak = 0; pop('STOLEN', p.x, p.y - 22, '#FF8FB0'); sparks(p.x, p.y, 10, [WHITE, AMBER_L]); Sfx.play('squawk');
-      } else { p.vx = (p.vx || 0) + g.dir * 95; sparks(p.x, p.y, 6, [WHITE, '#C9D3F0']); }   // or knock it off course
+      } else { p.vx = (p.vx || 0) + g.dir * (g.air ? 230 : 95); sparks(p.x, p.y, 6, [WHITE, '#C9D3F0']); if (g.air) pop('KNOCKED!', p.x, p.y - 22, '#FF8FB0', 15); }   // or knock it off course (aircraft hit much harder)
     }
   }
   h.gulls = h.gulls.filter(g => g.x > -120 && g.x < W + 120 && g.y > -40);
@@ -1596,14 +1871,14 @@ function updateHazards(dt) {
     } else { r.x += r.dir * 260 * dt; r.y -= 90 * dt; if (r.x < -70 || r.x > W + 70 || r.y < -40) h.rogue = null; }
   }
 }
-const inFog = (x, y) => G.hz.fog.some(f => Math.abs(x - f.x) < f.w / 2 && Math.abs(y - f.y) < 60);
+const inFog = (x, y) => G.hz.fog.some(f => Math.abs(x - f.x) < f.w / 2 && Math.abs(y - f.y) < (G.cfg.cloudy ? 78 : 60));
 
 function update(dt) {
   G.time += dt;
   if (G.state === 'playing' || G.demo) {
     const ts = G.slowT > 0 ? CONFIG.powers.slowFactor : 1, sdt = dt * ts;
     if (G.banner > 0) G.banner -= dt;
-    updateVan(dt); updateWind(sdt); updateStorm(sdt); updateDrone(sdt); updateItems(sdt); updatePelican(sdt); updateHazards(sdt); updateKong(sdt);
+    updateVan(dt); updateWind(sdt); updateStorm(sdt); updateDrone(sdt); updateItems(sdt); if (G.air) updateAirStrike(sdt); else updatePelican(sdt); updateHazards(sdt); updateKong(sdt);
     updateCannon(dt);
     if (G.turboT > 0) G.turboT = Math.max(0, G.turboT - dt);
     G.slowT = Math.max(0, G.slowT - dt); G.magnetT = Math.max(0, G.magnetT - dt);
@@ -1624,6 +1899,7 @@ const BTN = { y: 754, h: 68, lx: 20, rx: 232, w: 138, sx: 195, sy: 788, sr: 33 }
 function drawBG(c, t) {
   if (G.bgFade < 1 && G.bgPrev) { c.drawImage(G.bgPrev, 0, 0, W, H); c.globalAlpha = G.bgFade; c.drawImage(G.bg, 0, 0, W, H); c.globalAlpha = 1; }
   else c.drawImage(G.bg, 0, 0, W, H);
+  if (G.air) return;
   c.fillStyle = '#fff';
   for (let i = 0; i < 44; i++) { const x = (i * 83.7) % W + Math.sin(t * .8 + i) * 5, y = HZ + 12 + (i * 57.3) % (H - HZ - 70), a = .05 + .13 * Math.abs(Math.sin(t * 1.3 + i * 1.7));
     c.globalAlpha = a; c.fillRect(x, y, 8 + (i * 13) % 24, 1.5); } c.globalAlpha = 1;
@@ -1642,7 +1918,22 @@ function drawDeck(c, t) {
   c.fillStyle = 'rgba(0,0,0,.25)'; for (let x = 20; x < W; x += 34) c.fillRect(x, S.deckY + 3, 1.5, S.deckH - 3);
   for (let x = 19; x < W; x += 39) { if (P.lights > .25) glow(c, x, S.deckY + 14, 12, CYAN, .5); circ(c, x, S.deckY + 14, 2.4, P.lights > .25 ? CYAN : '#6c75b8'); }
 }
+function drawPlaneNow(c, t) {
+  const sc = vanScale(), turbo = G.turboT > 0, dir = G.vanDir, tier = planeTier(G.L), bob = Math.sin(t * 3.2) * 2.2, pitch = -clamp(Math.abs(G.vanV) / 340, 0, 1) * .1, y = CONFIG.scene.deckY + bob - 34 * sc;
+  const tx = G.vanX - dir * 40, g = c.createLinearGradient(tx, 0, tx - dir * (turbo ? 120 : 80), 0); g.addColorStop(0, 'rgba(255,255,255,.4)'); g.addColorStop(1, 'rgba(255,255,255,0)');    // contrail
+  c.fillStyle = g; c.fillRect(Math.min(tx, tx - dir * (turbo ? 120 : 80)), y - 2, turbo ? 120 : 80, 4);
+  if (turbo) { c.strokeStyle = 'rgba(255,255,255,.4)'; c.lineWidth = 1.5; for (let i = 0; i < 4; i++) { const yy = y - 22 + i * 14, l = 16 + ((i * 37 + t * 420) % 34), x0 = G.vanX - dir * 54; c.beginPath(); c.moveTo(x0, yy); c.lineTo(x0 - dir * l, yy); c.stroke(); } }
+  c.save(); c.translate(G.vanX, CONFIG.scene.deckY + bob); c.scale(sc, sc);
+  drawPlane(c, tier, dir, t, curVeh(), pitch, turbo ? '#FF9A4A' : G.magnetT > 0 ? '#A66BFF' : null, turbo); c.restore();
+  if (G.cfg.cannon) drawCannon(c, t);
+  if (G.magnetT > 0) { const r = catchHalf(); c.save(); c.strokeStyle = 'rgba(166,107,255,.8)'; c.lineWidth = 2; c.setLineDash([5, 5]); c.lineDashOffset = -t * 30; c.beginPath(); c.moveTo(G.vanX - r, binLine()); c.lineTo(G.vanX + r, binLine()); c.stroke(); c.restore(); }
+}
+function drawAirWisps(c, t) {                                              // streaks of cloud rushing past under the plane give a feeling of flying
+  c.save(); c.strokeStyle = 'rgba(255,255,255,.2)'; c.lineWidth = 2; c.lineCap = 'round';
+  for (let i = 0; i < 14; i++) { const sp = 90 + (i % 4) * 50, x = (((i * 83 - t * sp) % (W + 160)) + W + 160) % (W + 160) - 80, y = 740 + (i * 29) % 96; c.beginPath(); c.moveTo(x, y); c.lineTo(x + 30 + (i % 3) * 14, y); c.stroke(); } c.restore();
+}
 function drawVanNow(c, t) {
+  if (G.air) { drawPlaneNow(c, t); return; }
   const sc = vanScale(), turbo = G.turboT > 0, dir = G.vanDir, half = G.vanW / 2;
   if (turbo) {                                                           // speed lines and exhaust flame behind the van
     c.save(); c.translate(G.vanX - dir * (half + 2), CONFIG.scene.deckY - 12); c.scale(-dir, 1);
@@ -1666,6 +1957,12 @@ function drawEntity(c, p, t) {
 }
 function drawPelicanNow(c, t) {
   const p = G.pel, P0 = CONFIG.pelican; if (!G.cfg.pelican) return;
+  if (G.air) {                                                            // aircraft strike instead of the pelican
+    if (p.ph === 'warn') { const on = Math.sin(t * 18) > -.3; if (on) { c.save(); c.translate(p.x, p.y); c.fillStyle = '#FF4D6D'; c.strokeStyle = INK; c.lineWidth = 3; circ(c, 0, 0, 17); c.stroke(); txt(c, '!', 0, 9, `700 26px ${FONT}`, WHITE, 'center'); poly(c, [p.dir * 22, -8, p.dir * 36, 0, p.dir * 22, 8], '#FF4D6D'); c.restore();
+      c.strokeStyle = 'rgba(255,77,109,.35)'; c.lineWidth = 2; c.setLineDash([8, 8]); c.beginPath(); c.moveTo(p.x, p.y); c.lineTo(p.dir > 0 ? W : 0, p.y); c.stroke(); c.setLineDash([]); } }
+    else if (p.ph === 'snatch' || p.ph === 'out' || p.ph === 'back') { c.save(); c.translate(p.x, p.y); if (p.ph === 'back') c.rotate(-.5 * p.dir); c.scale(1.25, 1.25); drawEnemyPlane(c, 'jet', p.dir, t); c.restore(); }
+    return;
+  }
   drawPost(c);
   c.save(); const perched = p.ph === 'perch' || p.ph === 'warn';
   c.translate(perched ? P0.perchX : p.x, perched ? P0.perchY : p.y); c.scale(P0.scale * (perched ? 1 : 1), P0.scale);
@@ -1723,6 +2020,7 @@ function drawHUD(c, t) {
   }
 }
 function drawGull(c, g) {
+  if (g.air) { c.save(); c.translate(g.x, g.y); if (g.flee) c.rotate(-.5 * g.dir); drawEnemyPlane(c, g.type, g.dir, g.flap / 11); c.restore(); return; }
   c.save(); c.translate(g.x, g.y); c.scale(g.dir, 1); const f = Math.sin(g.flap) * 9; c.lineCap = 'round'; c.lineJoin = 'round';
   const wings = () => { c.beginPath(); c.moveTo(-1, 0); c.quadraticCurveTo(-10, -10 - f, -23, -3 + f * .5); c.moveTo(1, 0); c.quadraticCurveTo(10, -10 - f, 23, -3 + f * .5); c.stroke(); };
   c.strokeStyle = INK; c.lineWidth = 6; wings(); c.strokeStyle = WHITE; c.lineWidth = 3; wings();
@@ -1770,7 +2068,9 @@ function drawHazardsHigh(c, t) {
   for (const b of h.bolts) if (b.struck && b.pts) { const a = 1 - b.age / .4; c.save(); c.globalAlpha = a; c.lineJoin = 'round';
     c.strokeStyle = 'rgba(255,226,125,.55)'; c.lineWidth = 12; c.beginPath(); b.pts.forEach((q, i) => i ? c.lineTo(q[0], q[1]) : c.moveTo(q[0], q[1])); c.stroke();
     c.strokeStyle = WHITE; c.lineWidth = 4; c.stroke(); c.restore(); }
-  for (const f of h.fog) { c.save(); for (let i = 0; i < 5; i++) { const fx = f.x + (i - 2) * f.w / 5, fy = f.y + Math.sin(t * .6 + i * 1.7) * 6, r = f.w / 3.2; const g = c.createRadialGradient(fx, fy, 0, fx, fy, r);
+  if (G.cfg.cloudy) { const P = palOf(), col = mix(P.cloud || '#FFFFFF', '#FFFFFF', G.air ? .55 : .35);                              // level 25+: big puffy clouds drift across and hide the parcels
+    for (const f of h.fog) { const s = f.w / 150; puffCloud(c, f.x - f.w * .32, f.y + 16 + Math.sin(t * .7) * 3, s * .8, col, .96); puffCloud(c, f.x + f.w * .1, f.y - 4 + Math.sin(t * .6 + 1) * 3, s * 1.1, col, .98); puffCloud(c, f.x + f.w * .42, f.y + 18, s * .75, col, .96); } }
+  else for (const f of h.fog) { c.save(); for (let i = 0; i < 5; i++) { const fx = f.x + (i - 2) * f.w / 5, fy = f.y + Math.sin(t * .6 + i * 1.7) * 6, r = f.w / 3.2; const g = c.createRadialGradient(fx, fy, 0, fx, fy, r);
     g.addColorStop(0, 'rgba(235,240,255,.62)'); g.addColorStop(1, 'rgba(235,240,255,0)'); c.fillStyle = g; c.fillRect(fx - r, fy - r, r * 2, r * 2); } c.restore(); }
   if (G.stunT > 0) { c.save(); c.strokeStyle = '#FFE27D'; c.lineWidth = 2; c.lineJoin = 'round'; const hw = G.vanW / 2, by = binLine();
     for (let k = 0; k < 3; k++) { c.beginPath(); let x = G.vanX - hw + Math.random() * hw * 2, y = CONFIG.scene.deckY - 6; c.moveTo(x, y); for (let j = 0; j < 5; j++) { x += rnd(-9, 9); y -= (CONFIG.scene.deckY - by + 14) / 5; c.lineTo(x, y); } c.stroke(); } c.restore(); }
@@ -1857,10 +2157,12 @@ function render(t) {
   drawBG(c, t); drawKong(c, t); drawPelicanNow(c, t);
   for (const p of G.parcels) if (p.passed && !p.caught) drawEntity(c, p, t);
   for (const p of G.fish) if (p.passed && !p.caught) drawEntity(c, p, t);
-  drawDeck(c, t); drawHazardsLow(c, t); drawVanNow(c, t);
+  if (G.air) drawAirWisps(c, t); else drawDeck(c, t);
+  drawHazardsLow(c, t); drawVanNow(c, t);
   for (const p of G.parcels) if (!p.passed || p.caught) drawEntity(c, p, t);
   for (const p of G.fish) if (!p.passed || p.caught) drawEntity(c, p, t);
-  const d = G.drone; c.save(); c.translate(d.x + (d.jx || 0), d.y + (d.jy || 0)); drawDrone(c, t, d.tilt); c.restore();
+  const d = G.drone; if (!d.absent) { c.save(); c.translate(d.x + (d.jx || 0), d.y + (d.jy || 0)); drawDrone(c, t, d.tilt); c.restore(); }
+  drawAlienSeated(c, t);
   if (Math.abs(G.wind) > 12 && G.state === 'playing') { c.strokeStyle = 'rgba(255,255,255,.16)'; c.lineWidth = 1.5; for (let i = 0; i < 8; i++) { const y = 230 + i * 62, x = ((t * G.wind * 2.2 + i * 97) % (W + 120) + W + 120) % (W + 120) - 60;
     c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.sign(G.wind) * 40, y); c.stroke(); } }
   drawHazardsHigh(c, t); drawFx(c); drawStorm(c, t); c.restore();
@@ -1904,7 +2206,8 @@ function buildHow() {
   const rows = [['van', '<b>Slide the van</b> with the buttons, arrow keys or A / D. You can drag, too.'],
     ['box', '<b>Catch parcels</b> in the roof bin. Miss one and you lose a life. You get three.'],
     ['big', '<b>5 catches in a row</b> fires up <b>TURBO</b> for 8 seconds: the van races along, a water cannon blasts the pelican, and every catch scores double.'],
-    ['hazard', '<b>Hazards</b> arrive early and come faster from level 7: tide surges shove the van, oil makes you skid, a rogue drone drops junk crates (never catch those), lightning zaps the van and fog hides parcels. On <b>boss levels 20, 25, 30 and 35</b> a giant ape leaps onto the drone and shakes it so parcels drop at angles. Spray him to make him let go.'],
+    ['hazard', '<b>Hazards</b> arrive early and come faster from level 7: tide surges shove the van, oil makes you skid, a rogue drone drops junk crates (never catch those), lightning zaps the van and clouds hide parcels from level 25 (and storms blow them sideways from 15). On <b>levels 10, 16, 22 and 28</b> a giant ape grabs the drone and swings from it. Spray him to make him let go.'],
+    ['air', '<b>From level 30 you fly.</b> Your van becomes a plane (a biplane, then a jet at 40, then a space plane at 50) and catches parcels in the sky. Other aircraft knock parcels away instead of the pelican, and every 6th level an <b>alien</b> sits on the drone and tries to steal it: spray him three times to blast him off.'],
     ['pelican', 'From level 4 the pelican shows a <b>!</b>, then snatches a parcel or drops a <b>decoy fish</b>. Seagulls knock parcels sideways or steal them. Tap <b>SPRAY</b> (or Space) to blast them with your water cannon: 3 shots, refilling over time.'],
     ['gold', '<b>Golden parcels</b> score 50. <b>Bombs</b> cost a life, so let them fall into the sea.'],
     ['power', '<b>Bubbles</b> help you: heart (+1 life), clock (slow motion) and magnet (wider catch).'],
@@ -1915,6 +2218,7 @@ function buildHow() {
     if (k === 'van') { c.scale(.5, .5); drawVan(c, 96, 1, 0); }
     else if (k === 'big') { c.scale(.5, .5); c.translate(0, 8); const g = c.createLinearGradient(0, 0, -40, 0); g.addColorStop(0, '#FFE27D'); g.addColorStop(1, 'rgba(255,92,138,0)'); c.fillStyle = g; poly(c, [-50, -12, -86, -8, -50, -2]);
       drawVan(c, 96, 1, 0, '#FF9A4A'); c.strokeStyle = 'rgba(255,255,255,.6)'; c.lineWidth = 2; for (let i = 0; i < 3; i++) { c.beginPath(); c.moveTo(-60, -22 - i * 12); c.lineTo(-84, -22 - i * 12); c.stroke(); } }
+    else if (k === 'air') { c.scale(.5, .5); c.translate(0, 26); drawPlane(c, 1, 1, 0, VEHICLES[0], 0, null, false); }
     else if (k === 'hazard') { c.save(); c.translate(-6, 0); drawGull(c, { x: -2, y: -8, dir: 1, flap: 1 }); c.restore(); poly(c, [10, -22, 0, 0, 7, 0, 3, 18, 16, -6, 9, -6], '#FFE27D'); c.fillStyle = '#120C2A'; c.beginPath(); c.ellipse(4, 22, 20, 5, 0, 0, TAU); c.fill(); }
     else if (k === 'pelican') { c.translate(6, 20); c.scale(.55, .55); drawPelican(c, 'perch', 0, false); }
     else if (k === 'world') { c.translate(-32, -34); c.drawImage(buildBG(9, .5), 0, 95, 195, 170, 0, 0, 64, 56); }

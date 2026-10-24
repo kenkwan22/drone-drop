@@ -1,6 +1,6 @@
 # Drone Drop
 
-A one-button-at-a-time catch game in the spirit of Game & Watch *Parachute*. A drone drops parcels, you slide a delivery van to catch them, and a pelican on the right edge causes trouble. 60 levels across 17 worlds.
+A one-button-at-a-time catch game in the spirit of Game & Watch *Parachute*. A drone drops parcels, you slide a delivery van to catch them, and a pelican on the right edge causes trouble. From level 30 you fly a plane through the sky. 60 levels across 17 worlds.
 
 Single self-contained `index.html` (HTML5 canvas, no build step, no dependencies besides Google Fonts). Portrait phone first (390 x 844 logical scene, scaled to fit), playable on desktop.
 
@@ -18,20 +18,33 @@ Controls: on-screen left/right buttons, drag, arrow keys or A/D. Esc or P pauses
 
 ## Worlds and levels
 
-| Levels | World | Levels | World |
-|---|---|---|---|
-| 1-4 | Harbor Town | 29-31 | Mount Fuji |
-| 5-8 | New York | 32-33 | China |
-| 9-10 | London | 34-36 | Hawaii |
-| 11-12 | Paris | 37-39 | Tropical Paradise |
-| 13-15 | Sydney | 40-46 | **Neon City 2099** (cyberpunk) |
-| 16-18 | Los Angeles | 47-53 | **Chrome Harbor** (futuristic) |
-| 19-21 | Egypt | 54-60 | Sky City |
-| 22-23 | Dubai | | |
-| 24-26 | Saudi Arabia | | |
-| 27-28 | Tokyo | | |
+| Levels | World |
+|---|---|
+| 1-3 | Harbor Town |
+| 4-6 | New York |
+| 7 / 8 | London / Paris |
+| 9-18 | Sydney, Los Angeles, Egypt, Dubai, Saudi Arabia, Tokyo, Mount Fuji, China, Hawaii, Tropical Paradise (one level each) |
+| **19-24** | **Volcano Island** (erupting volcano, lava rivers, ash column, embers) |
+| **25-27** | **Neon City 2099** (cyberpunk) |
+| 28-29 | Chrome Harbor (futuristic port) |
+| **30-34** | **Cloud Highway** (flying begins) |
+| 35-39 | Sky City |
+| 40-44 | Stratosphere |
+| 45-49 | Thunder Alley |
+| 50-54 | Earth Orbit |
+| 55-60 | Deep Space |
 
-Each level cycles through five times of day (dusk, night, sunrise, day, golden hour; the cyberpunk worlds stay mostly dusk and night) and mirrors alternate levels, so every one of the 60 backdrops is different. From level 40 the look turns futuristic: Neon City has a giant holographic AI head, a monorail, flying cars and neon signs in the rain, and Chrome Harbor has a glowing ring gate, a maglev, a space elevator and hover boats. The art gets richer as you go: a harbour with a lighthouse, then landmarks (Statue of Liberty, Big Ben, Eiffel Tower, the Hollywood sign and Santa Monica pier, the Giza pyramids and Sphinx, Burj Khalifa, Kingdom Centre, Opera House, Tokyo Tower, Mount Fuji, pagodas, Diamond Head, a volcano island) and finally a floating sky city under an aurora.
+Each level cycles through times of day and mirrors alternate levels, so every one of the 60 backdrops is different. The first eight levels (the free ones) show four worlds.
+
+## Flying levels (30-60)
+
+From level 30 the game moves into the sky. There is no sea or deck: the drone drops parcels in open air and **your vehicle is now a plane** that catches them in a hopper on top, with exactly the same catch size and height as the van. The plane changes every ten levels: **biplane (30-39), jet (40-49), space plane (50-60)**, painted in the colours of whichever vehicle you chose in the Garage. The sea hazards are gone (no tides, no oil), and **other aircraft take over from the pelican and seagulls**: a ! appears at the screen edge, then a jet tears across at a parcel's height and knocks it sideways, helicopters and prop planes cross the sky, and decoy balloons replace the fish. Storms, lightning, the rogue drone and the water cannon all still work.
+
+**Boss alien (levels 30, 36, 42, 48, 54, 60).** A flying saucer hovers in the distance, flashes a warning, then lands an alien in a bubble helmet on top of the drone. A green tractor ring and a STEALING! meter fill up while the drone lurches around unpredictably. If the meter fills, the drone is stolen (you lose a life, and it flies back in a moment later). Spray him three times to blast him off.
+
+**Boss ape (levels 10, 16, 22, 28).** A giant ape wades in from the sea, roars, leaps up, grabs the drone's skid and swings from it like a pendulum, so parcels leave at unpredictable angles. Spraying him makes him let go sooner.
+
+**Clouds (level 25+).** Big puffy clouds drift across and hide the parcels inside them; they come more often once you are flying.
 
 ## The ending
 
@@ -44,7 +57,7 @@ Everything lives in `levelCfg()` and `CONFIG` at the top of `index.html`.
 - Levels 1-3: gentle. One to two parcels in flight, slow fall. Level 4 brings the pelican, seagulls and your water cannon.
 - Level 6 onward: it bites. Wind gusts, then mixed fall speeds (7), bombs (10), rapid double drops (18), a slippery deck (25) and flickering stealth parcels (35).
 - The drone never plans an impossible drop: it checks that the van can reach each parcel in time (`violation()`).
-- Delivery target per level: `14 + floor(level * 0.8)` (14 at level 1, 48 at most), so a level takes roughly a minute. Difficulty peaks around level 45-50, then eases off: level 55 onward plays about like level 30, and bosses after level 50 are milder and rarer (60, 70, 75). A heart drops about every 12 deliveries while you are down a life. Stars: 3 for no lives lost, 2 for one, 1 otherwise.
+- Delivery target per level: `14 + floor(level * 0.8)` (14 at level 1, 48 at most), so a level takes roughly a minute. Difficulty peaks around level 45-50, then eases off: level 55 onward plays about like level 30, and bosses after level 50 are milder and rarer (60). A heart drops about every 12 deliveries while you are down a life. Stars: 3 for no lives lost, 2 for one, 1 otherwise.
 
 The pelican strikes every 14-22 s early on and every 4-16 s late (`pelGap`), and from level 10 both the pelican and the seagulls come about 25-40% more often (`birdGap()`), easing off again after level 50. From level 4 about half its events are parcel snatches (rising to 75%), and from level 15 a snatch can chain into a second parcel. Fish runs drop one fish, then two from level 8 and three from level 20. A parcel already over the van when the pelican reaches it is saved.
 
@@ -53,8 +66,6 @@ Hazards, all tunable in `levelCfg()` and `hzGap()`: seagulls that knock parcels 
 **Storms (level 15+).** A storm rolls in with a "STORM INCOMING" warning and big chevrons showing the direction, then a gale blows parcels sideways across the screen (up to 120-200 px/s) instead of straight down. The drone aims upwind so it is always winnable. From level 20 storms come roughly twice as often, last 7-10 s and can swing round mid-storm ("WIND TURNS!"). They ease off after level 50.
 
 **Water cannon.** From level 4 a SPRAY button (Space, W or Up on a keyboard) fires a 3-shot tank that refills every 5 s. It auto-aims at the pelican, a seagull near a parcel, the rogue drone or the ape. During TURBO it fires automatically with no limit.
-
-**Boss ape.** On every fifth level from 20 to 50 (then 60, gentler) a giant ape wades in from the sea, roars, leaps up and grabs the drone's skid. He hangs there swinging like a pendulum with random lurches, dragging the drone from side to side, and parcels leave with the drone's sideways speed, so their angle is hard to predict. Spraying him makes him let go sooner.
 
 Extras: golden parcels (+50), heart (+1 life), slow-mo and magnet bubbles.
 
