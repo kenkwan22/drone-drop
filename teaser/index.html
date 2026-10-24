@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Drone Drop: catch every parcel, then take to the sky</title>
+<meta name="description" content="Drone Drop is a fast, funny catch game by Mont Saba Works. Slide your van under the drone's parcels, outsmart the pelican, beat a giant ape, then fly a plane through storms and space. 60 levels, free to try.">
+<meta name="theme-color" content="#070A24">
+<link rel="canonical" href="https://kenkwan22.github.io/drone-drop/teaser/">
+<link rel="icon" type="image/png" href="../assets/icon-192.png">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Mont Saba Works">
+<meta property="og:title" content="Drone Drop: catch every parcel, then take to the sky">
+<meta property="og:description" content="Outsmart the pelican, beat the giant ape, then fly through storms and space. 60 levels, free to try.">
+<meta property="og:url" content="https://kenkwan22.github.io/drone-drop/teaser/">
+<meta property="og:image" content="https://kenkwan22.github.io/drone-drop/teaser/og.jpg">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Drone Drop by Mont Saba Works">
+<meta name="twitter:description" content="Catch every parcel. Outsmart the pelican. Then take to the sky.">
+<meta name="twitter:image" content="https://kenkwan22.github.io/drone-drop/teaser/og.jpg">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"VideoGame","name":"Drone Drop","description":"A catch game: slide a van under a drone's falling parcels, outsmart a pelican and a giant ape, then fly a plane through storms and space.","genre":["Arcade","Casual"],"gamePlatform":["iOS","Android","Web browser"],"applicationCategory":"Game","operatingSystem":"iOS, Android, Web","image":"https://kenkwan22.github.io/drone-drop/teaser/og.jpg","url":"https://kenkwan22.github.io/drone-drop/","author":{"@type":"Organization","name":"Mont Saba Works"},"publisher":{"@type":"Organization","name":"Mont Saba Works"},"offers":{"@type":"Offer","price":"9.99","priceCurrency":"USD"}}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#141A45; --white:#F4F1FF; --cyan:#3DF0E0; --amber:#FFB347; --amber-l:#FFD27D; --amber-s:#B8731A;
+  --pink:#FF5C8A; --label:#B9C2F5; --glass:rgba(11,16,48,.72); --line:rgba(255,255,255,.14);
+  --font:'Space Grotesk',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; --mono:'Space Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:var(--font);color:var(--white);background:#070A24;line-height:1.5;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;z-index:-1;background:radial-gradient(90% 60% at 80% -10%,rgba(124,58,142,.55),transparent 60%),radial-gradient(80% 50% at 0% 30%,rgba(61,240,224,.12),transparent 60%),linear-gradient(#0B1038,#070A24 60%)}
+a{color:inherit}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+.skip{position:absolute;left:-999px}.skip:focus{left:12px;top:12px;background:#fff;color:#000;padding:8px 12px;border-radius:8px;z-index:9}
+header.top{display:flex;justify-content:space-between;align-items:center;padding:18px 0}
+.maker{font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:13px;color:var(--label)}
+.maker b{color:var(--white)}
+.topcta{font-weight:700;font-size:14px;text-decoration:none;border:1.5px solid var(--line);padding:9px 16px;border-radius:999px;background:var(--glass)}
+.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:36px;align-items:center;padding:18px 0 54px}
+.kicker{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);font-weight:700;margin:0 0 10px}
+h1{margin:0;font-size:clamp(54px,9vw,104px);line-height:.88;letter-spacing:-.03em;text-shadow:0 5px 0 var(--ink),0 0 40px rgba(61,240,224,.3)}
+h1 span{display:block;color:var(--amber-l);text-shadow:0 5px 0 var(--amber-s),0 0 44px rgba(255,179,71,.4)}
+.lead{font-size:clamp(18px,2.4vw,23px);color:#E7E4FF;max-width:30em;margin:22px 0 8px}
+.stats{display:flex;flex-wrap:wrap;gap:8px 18px;margin:0 0 26px;padding:0;list-style:none;color:var(--amber-l);font-weight:700;font-size:15px}
+.stats li::before{content:"\2605";margin-right:7px;color:var(--cyan)}
+.cta{display:flex;flex-wrap:wrap;gap:12px;align-items:stretch}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;font:700 18px var(--font);text-decoration:none;border-radius:16px;padding:15px 24px;border:0;cursor:pointer;transition:transform .08s}
+.btn:active{transform:translateY(3px)}
+.btn.play{color:var(--ink);background:linear-gradient(var(--amber-l),var(--amber));box-shadow:0 5px 0 var(--amber-s)}
+.store{flex-direction:column;align-items:flex-start;gap:0;line-height:1.15;background:var(--glass);border:1.5px solid var(--line);color:var(--white);padding:10px 20px;min-width:176px;font-size:18px}
+.store small{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--label);font-weight:500}
+.store[aria-disabled=true]{cursor:default;opacity:.85}
+.store .soon{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);background:var(--cyan);border-radius:999px;padding:2px 8px;margin-top:5px;font-weight:700}
+.note{font-size:13px;color:var(--label);margin:14px 0 0}
+/* the phone */
+.stagewrap{display:flex;justify-content:center;position:relative}
+.stagewrap::before{content:"";position:absolute;width:86%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(255,179,71,.3),transparent 66%);top:6%;filter:blur(6px)}
+.phone{position:relative;width:min(300px,78vw);padding:10px;border-radius:44px;background:linear-gradient(145deg,#1C2260,#0A0E2C);box-shadow:0 30px 70px rgba(0,0,0,.55),0 0 0 1.5px rgba(255,255,255,.14) inset;transform:rotate(2.2deg)}
+.screen{position:relative;width:100%;aspect-ratio:390/844;border-radius:34px;overflow:hidden;background:#0B1030}
+.screen iframe{position:absolute;left:0;top:0;width:390px;height:844px;border:0;transform-origin:0 0;pointer-events:none}
+.screen img.poster{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.live{position:absolute;left:50%;transform:translateX(-50%);bottom:-34px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--label);white-space:nowrap}
+.live i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#FF4D6D;margin-right:7px;animation:pulse 1.4s infinite}
+@keyframes pulse{50%{opacity:.25}}
+/* sections */
+section{padding:56px 0}
+h2{font-size:clamp(30px,4.6vw,46px);line-height:1.05;margin:0 0 10px;letter-spacing:-.02em}
+.sub{color:var(--label);max-width:38em;margin:0 0 28px;font-size:18px}
+.rail{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px 20px 26px;margin:0 -20px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.25) transparent}
+.shot{flex:0 0 auto;width:min(232px,62vw);scroll-snap-align:center;margin:0}
+.shot .frame{padding:7px;border-radius:32px;background:linear-gradient(145deg,#1C2260,#0A0E2C);box-shadow:0 18px 44px rgba(0,0,0,.45),0 0 0 1.5px rgba(255,255,255,.12) inset}
+.shot img{display:block;width:100%;height:auto;border-radius:26px;aspect-ratio:780/1688;background:#0B1030}
+.shot figcaption{margin-top:14px;font-size:15px;color:#E7E4FF}
+.shot figcaption b{display:block;color:var(--amber-l);font-size:16px;margin-bottom:2px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.card{background:var(--glass);border:1.5px solid var(--line);border-radius:22px;padding:22px}
+.card .ico{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-size:24px;background:linear-gradient(145deg,rgba(255,179,71,.28),rgba(255,92,138,.22));margin-bottom:12px}
+.card h3{margin:0 0 6px;font-size:20px}.card p{margin:0;color:#D5D9F7;font-size:15.5px}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;counter-reset:s;padding:0;list-style:none;margin:0}
+.steps li{counter-increment:s;background:var(--glass);border:1.5px solid var(--line);border-radius:22px;padding:22px 22px 22px 70px;position:relative;font-size:17px}
+.steps li::before{content:counter(s);position:absolute;left:20px;top:18px;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font:700 18px var(--mono);color:var(--ink);background:linear-gradient(var(--amber-l),var(--amber))}
+.steps b{display:block;color:var(--amber-l);margin-bottom:2px}
+.price{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch}
+.price .card.big{background:linear-gradient(150deg,rgba(124,58,142,.55),rgba(11,16,48,.8));border-color:rgba(255,210,125,.4)}
+.price .num{font:700 54px var(--mono);color:var(--amber-l);line-height:1}
+.price ul{margin:12px 0 0;padding:0;list-style:none}.price li{margin:6px 0;padding-left:26px;position:relative}.price li::before{content:"\2713";position:absolute;left:0;color:var(--cyan);font-weight:700}
+.getit{text-align:center;padding:64px 20px;border-radius:30px;background:linear-gradient(160deg,rgba(255,179,71,.18),rgba(124,58,142,.4));border:1.5px solid rgba(255,210,125,.3)}
+.getit .cta{justify-content:center;margin-top:24px}
+footer{padding:40px 0 60px;color:var(--label);font-size:14px;display:flex;flex-wrap:wrap;gap:10px 28px;justify-content:space-between;border-top:1px solid var(--line);margin-top:56px}
+footer b{color:var(--white)}
+@media (max-width:860px){
+  .hero{grid-template-columns:1fr;gap:70px;padding-top:6px}.stagewrap{order:2}
+  .grid,.steps{grid-template-columns:1fr}.price{grid-template-columns:1fr}
+  .btn.play,.store{flex:1 1 100%}.topcta{display:none}
+}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.live i{animation:none}}
+</style>
+</head>
+<body>
+<a class="skip" href="#play">Skip to the game</a>
+<div class="wrap">
+  <header class="top">
+    <div class="maker">A game by <b>Mont Saba Works</b></div>
+    <a class="topcta" href="../">Play free now</a>
+  </header>
+
+  <main id="main">
+    <div class="hero">
+      <div>
+        <p class="kicker">Out now to play in your browser. Apps coming soon.</p>
+        <h1>DRONE<span>DROP</span></h1>
+        <p class="lead">A drone drops the parcels. You slide the van to catch them. Outsmart a thieving pelican, wrestle a giant ape, then take off in a plane and fly through storms, orbit and deep space.</p>
+        <ul class="stats"><li>60 levels</li><li>17 worlds</li><li>Fly a plane from level 30</li><li>Free to try</li></ul>
+        <div class="cta" id="play">
+          <a class="btn play" href="../">&#9654; Play free in your browser</a>
+          <a class="btn store" id="store-apple" aria-disabled="true"><small>Download for iPhone</small>App Store<span class="soon">Coming soon</span></a>
+          <a class="btn store" id="store-google" aria-disabled="true"><small>Get it for Android</small>Google Play<span class="soon">Coming soon</span></a>
+        </div>
+        <p class="note">Levels 1 to 8 are free. One purchase unlocks all 60. No ads.</p>
+      </div>
+      <div class="stagewrap">
+        <div class="phone">
+          <div class="screen" id="screen">
+            <img class="poster" src="img/alien.webp" alt="Drone Drop gameplay: an alien sits on top of the drone while a biplane catches parcels above the clouds" width="780" height="1688">
+          </div>
+          <div class="live"><i></i>Live gameplay, playing itself</div>
+        </div>
+      </div>
+    </div>
+
+    <section aria-labelledby="h-see">
+      <h2 id="h-see">See it in action</h2>
+      <p class="sub">From sunset harbours to a volcano island, a neon megacity and the edge of space. Every one of the 60 levels has its own backdrop.</p>
+      <div class="rail" role="list">
+        <figure class="shot" role="listitem"><div class="frame"><img loading="lazy" src="img/harbor.webp" width="780" height="1688" alt="A van catching parcels at a harbour at dusk"></div><figcaption><b>Catch and combo</b>Five in a row fires up turbo.</figcaption></figure>
+        <figure class="shot" role="listitem"><div class="frame"><img loading="lazy" src="img/ape.webp" width="780" height="1688" alt="A giant ape hanging from the drone in Los Angeles"></div><figcaption><b>Boss: the giant ape</b>He swings from the drone, so parcels fly at odd angles.</figcaption></figure>
+        <figure class="shot" role="listitem"><div class="frame"><img loading="lazy" src="img/volcano.webp" width="780" height="1688" alt="An erupting volcano island at night"></div><figcaption><b>Volcano Island</b>Lava, ash and flying embers.</figcaption></figure>
+        <figure class="shot" role="listitem"><div class="frame"><img loading="lazy" src="img/neon.webp" width="780" height="1688" alt="A cyberpunk city with a giant hologram"></div><figcaption><b>Neon City 2099</b>A cyberpunk skyline, hovering traffic and a giant AI hologram.</figcaption></figure>
+        <figure class="shot" role="listitem"><div class="frame"><img loading="lazy" src="img/alien.webp" width="780" height="1688" alt="An alien sits on the drone while a biplane flies above the clouds"></div><figcaption><b>Take to the sky</b>From level 30 your van becomes a plane. Watch out for the alien thief.</figcaption></figure>
+        <figure class="shot" role="listitem"><div class="frame"><img loading="lazy" src="img/clouds.webp" width="780" height="1688" alt="Clouds drifting across and hiding falling parcels"></div><figcaption><b>Clouds hide the parcels</b>Catch what you can't quite see.</figcaption></figure>
+        <figure class="shot" role="listitem"><div class="frame"><img loading="lazy" src="img/jet.webp" width="780" height="1688" alt="A jet in the stratosphere with the curve of the Earth below"></div><figcaption><b>Jet at level 40</b>The plane changes every ten levels.</figcaption></figure>
+        <figure class="shot" role="listitem"><div class="frame"><img loading="lazy" src="img/storm.webp" width="780" height="1688" alt="A thunderstorm blowing parcels sideways"></div><figcaption><b>Storms blow parcels sideways</b>Other aircraft knock them away too.</figcaption></figure>
+        <figure class="shot" role="listitem"><div class="frame"><img loading="lazy" src="img/orbit.webp" width="780" height="1688" alt="A space plane in Earth orbit near a space station"></div><figcaption><b>Earth orbit</b>A space plane, a space station and the Earth below.</figcaption></figure>
+        <figure class="shot" role="listitem"><div class="frame"><img loading="lazy" src="img/space.webp" width="780" height="1688" alt="Deep space with a ringed planet and asteroids"></div><figcaption><b>Deep space</b>Ringed planets, asteroids and a comet.</figcaption></figure>
+        <figure class="shot" role="listitem"><div class="frame"><img loading="lazy" src="img/finale.webp" width="780" height="1688" alt="Fireworks and a golden Drone Champion trophy"></div><figcaption><b>Become the Drone Champion</b>Fireworks, a trophy and a rank.</figcaption></figure>
+      </div>
+    </section>
+
+    <section aria-labelledby="h-how">
+      <h2 id="h-how">Easy to learn, hard to put down</h2>
+      <p class="sub">One thumb, three ideas, and a lot of things trying to ruin your day.</p>
+      <ol class="steps">
+        <li><b>Slide</b>Move the van or plane left and right to get under the falling parcels.</li>
+        <li><b>Catch five in a row</b>You get turbo for eight seconds: faster, double points, and a water cannon.</li>
+        <li><b>Survive the chaos</b>Pelicans, seagulls, storms, lightning, a rogue drone and bosses. Don't catch the bombs.</li>
+      </ol>
+    </section>
+
+    <section aria-labelledby="h-feat">
+      <h2 id="h-feat">Packed with surprises</h2>
+      <p class="sub">The game keeps changing, so every few levels feels fresh.</p>
+      <div class="grid">
+        <div class="card"><div class="ico" aria-hidden="true">&#127757;</div><h3>17 worlds</h3><p>London, Paris, Sydney, Los Angeles, Egypt, Dubai, Saudi Arabia, Tokyo, Mount Fuji, China, Hawaii and more, then a volcano, a cyber city and the sky.</p></div>
+        <div class="card"><div class="ico" aria-hidden="true">&#9992;&#65039;</div><h3>Fly from level 30</h3><p>Your van becomes a biplane, then a jet, then a space plane. Other aircraft knock your parcels off course.</p></div>
+        <div class="card"><div class="ico" aria-hidden="true">&#129421;</div><h3>Boss fights</h3><p>A giant ape swings from the drone. Later an alien sits on top and tries to steal it. Blast him off with your water cannon.</p></div>
+        <div class="card"><div class="ico" aria-hidden="true">&#9928;&#65039;</div><h3>Weather that fights back</h3><p>Gales blow parcels sideways, clouds hide them, lightning stuns you and tides shove your van along the pier.</p></div>
+        <div class="card"><div class="ico" aria-hidden="true">&#128666;</div><h3>Garage of rides</h3><p>Unlock a taxi, an ice-cream van, a fire truck and more with stars. Your plane wears the same colours.</p></div>
+        <div class="card"><div class="ico" aria-hidden="true">&#127942;</div><h3>A proper finale</h3><p>Reach level 60 for fireworks, a golden trophy, a rank, credits and a special Champion Van.</p></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="h-price">
+      <h2 id="h-price">Free to try. One simple purchase.</h2>
+      <div class="price">
+        <div class="card"><h3>Free</h3><ul><li>Levels 1 to 8</li><li>Four worlds to explore</li><li>Pelican, seagulls and your water cannon</li><li>No ads, no timers</li></ul></div>
+        <div class="card big"><h3>World Tour</h3><div class="num">US$9.99</div><ul><li>All 60 levels in 17 worlds</li><li>Boss ape and boss alien</li><li>The flying levels and every plane</li><li>Played once, yours forever</li></ul></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="getit">
+        <h2>Ready for your first delivery?</h2>
+        <p class="sub" style="margin:0 auto">Play it right now in your browser, and watch this space for the iPhone and Android apps.</p>
+        <div class="cta">
+          <a class="btn play" href="../">&#9654; Play free in your browser</a>
+          <a class="btn store" id="store-apple-2" aria-disabled="true"><small>Download for iPhone</small>App Store<span class="soon">Coming soon</span></a>
+          <a class="btn store" id="store-google-2" aria-disabled="true"><small>Get it for Android</small>Google Play<span class="soon">Coming soon</span></a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div><b>Drone Drop</b> is made by <b>Mont Saba Works</b>.</div>
+    <div>&copy; 2026 Mont Saba Works. All rights reserved.</div>
+    <!-- Add a "Privacy" link and a contact email here once you have them. -->
+  </footer>
+</div>
+
+<script>
+/* When the apps are live, paste the store links here and the "Coming soon" buttons become real links. */
+const STORES = { apple: '', google: '' };
+(function () {
+  const pairs = [['store-apple', 'apple'], ['store-apple-2', 'apple'], ['store-google', 'google'], ['store-google-2', 'google']];
+  for (const [id, key] of pairs) { const a = document.getElementById(id); if (!a) continue;
+    if (STORES[key]) { a.href = STORES[key]; a.removeAttribute('aria-disabled'); a.target = '_blank'; a.rel = 'noopener'; const s = a.querySelector('.soon'); if (s) s.remove(); }
+    else a.addEventListener('click', e => e.preventDefault()); }
+  // live gameplay: the real game runs inside the phone in autopilot ("?showcase"), but only when visible, and not for people who prefer reduced motion
+  const screen = document.getElementById('screen'), reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function fit() { const f = screen.querySelector('iframe'); if (f) f.style.transform = 'scale(' + (screen.clientWidth / 390) + ')'; }
+  addEventListener('resize', fit);
+  if (!reduce && 'IntersectionObserver' in window) {
+    const io = new IntersectionObserver(es => { if (es[0].isIntersecting) { io.disconnect(); const f = document.createElement('iframe'); f.src = '../index.html?showcase=1'; f.title = 'Drone Drop gameplay demo'; f.setAttribute('tabindex', '-1'); f.setAttribute('aria-hidden', 'true'); f.loading = 'lazy';
+      f.addEventListener('load', () => setTimeout(() => { const p = screen.querySelector('.poster'); if (p) p.style.display = 'none'; }, 700)); screen.appendChild(f); fit(); } }, { threshold: .2 });
+    io.observe(screen);
+  }
+})();
+</script>
+</body>
+</html>

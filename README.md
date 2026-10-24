@@ -8,6 +8,8 @@ Single self-contained `index.html` (HTML5 canvas, no build step, no dependencies
 
 Play it online: https://kenkwan22.github.io/drone-drop/ (GitHub Pages, served from the `main` branch).
 
+Teaser page for the game (screenshots, live gameplay, store buttons): https://kenkwan22.github.io/drone-drop/teaser/ . The App Store and Google Play buttons say "Coming soon" until you paste the store links into `STORES` at the bottom of `teaser/index.html`. Made by Mont Saba Works.
+
 Or open `index.html` in a browser, or serve the folder:
 
 ```bash

@@ -53,6 +53,7 @@ h1,h2,h3,p{margin:0}
 .btn.cyan{background:linear-gradient(#8FFFF3,var(--cyan));box-shadow:0 5px 0 var(--teal)}
 .meta{position:absolute;bottom:34px;left:0;right:0;text-align:center;color:var(--label);font-size:14px}
 .meta b{font-family:var(--mono);color:var(--white);font-size:16px}
+.maker{margin-top:6px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.65}
 .icon{position:absolute;top:18px;right:18px;width:44px;height:44px;border-radius:50%;border:1.5px solid var(--glass-b);
   background:var(--glass);color:var(--white);font:700 18px var(--font);cursor:pointer}
 .icon.left{right:auto;left:18px}
@@ -1307,7 +1308,7 @@ const G = {
   wind: 0, windT: 2, windTarget: 0, slowT: 0, magnetT: 0, banner: 0, bannerTitle: '', bannerSub: '', bannerTip: '',
   shake: 0, flash: 0, flashCol: '255,92,138', endT: 0, stats: { caught: 0, bestCombo: 0, turbo: 0 }, bonus: 0
 };
-const ui = { from: 'title' };
+const ui = { from: 'title' }, SHOWCASE = /[?&]showcase\b/.test(location.search);
 const inp = { keyL: false, keyR: false, ptrs: new Map(), left: false, right: false, dragX: null };
 
 const vanScale = () => CONFIG.van.scale;
@@ -2141,7 +2142,8 @@ function renderVictory(c, t) {
 const easeOutBack = u => 1 + 2.70158 * Math.pow(u - 1, 3) + 1.70158 * Math.pow(u - 1, 2);
 function buildCredits() {
   const cast = ['The Drone, our champion', 'The Pelican, thief of parcels', 'The Seagulls, local troublemakers', 'The Giant Ape, a big softy', 'The Rogue Drone, junk dealer'];
-  $('#credits-in').innerHTML = `<h3>DRONE DROP</h3><p>Thanks for flying!</p><h3>The worlds</h3><p>${WORLDS.map(w => w.name).join('<br>')}</p><h3>The cast</h3><p>${cast.join('<br>')}</p><h3>Champion</h3><p>Score ${pad4(Save.d.best)}<small>${rankFor(totalStars())}</small></p><h3>See you next delivery</h3><p>&#9733; &#9733; &#9733;</p>`;
+  const cast2 = ['The Alien, would-be drone thief', 'The Jet, sky bully']; cast.push(...cast2);
+  $('#credits-in').innerHTML = `<h3>DRONE DROP</h3><p>A game by<br><b>Mont Saba Works</b></p><p>Thanks for flying!</p><h3>The worlds</h3><p>${WORLDS.map(w => w.name).join('<br>')}</p><h3>The cast</h3><p>${cast.join('<br>')}</p><h3>Champion</h3><p>Score ${pad4(Save.d.best)}<small>${rankFor(totalStars())}</small></p><h3>See you next delivery</h3><p>&#9733; &#9733; &#9733;</p>`;
 }
 function shareScore() {
   const text = `I'm a Drone Drop Champion! Score ${pad4(G.score)}, ${totalStars()}/${3 * CONFIG.levels.total} stars (${rankFor(totalStars())}).`;
@@ -2179,7 +2181,7 @@ const playLevel = () => clamp(Save.d.maxLevel, 1, Billing.unlocked() ? CONFIG.le
 function canPlay(L) { return Billing.unlocked() || (L <= CONFIG.levels.free && L <= Save.d.maxLevel); }
 
 function refreshTitle() {
-  document.querySelector('#s-title .meta').innerHTML = 'Best score <b id="t-best">' + pad4(Save.d.best) + '</b>' + (Save.d.champion ? ' &middot; 🏆 Drone Champion' : '');
+  document.querySelector('#s-title .meta').innerHTML = 'Best score <b id="t-best">' + pad4(Save.d.best) + '</b>' + (Save.d.champion ? ' &middot; 🏆 Drone Champion' : '') + '<div class="maker">A game by Mont Saba Works</div>';
   const n = playLevel(); $('#b-play').textContent = n > 1 ? 'CONTINUE · LV ' + n : 'PLAY';
   $('#b-mute').textContent = Save.d.mute ? '✕' : '♪'; $('#b-mute').setAttribute('aria-pressed', String(!!Save.d.mute));
 }
@@ -2316,8 +2318,8 @@ addEventListener('keyup', e => {
   const k = e.key;
   if (k === 'ArrowLeft' || k === 'a' || k === 'A') { inp.keyL = false; syncInput(); } else if (k === 'ArrowRight' || k === 'd' || k === 'D') { inp.keyR = false; syncInput(); }
 });
-addEventListener('blur', () => { inp.keyL = inp.keyR = false; inp.ptrs.clear(); syncInput(); if (G.state === 'playing') togglePause(); });
-document.addEventListener('visibilitychange', () => { if (document.hidden && G.state === 'playing') togglePause(); });
+addEventListener('blur', () => { inp.keyL = inp.keyR = false; inp.ptrs.clear(); syncInput(); if (G.state === 'playing' && !SHOWCASE) togglePause(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && G.state === 'playing' && !SHOWCASE) togglePause(); });
 $('#ui').addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (b) act(b.dataset.act, b.dataset); });
 
 /* ------------------------------ LOOP & BOOT ----------------------------- */
@@ -2336,10 +2338,29 @@ function frame(ts) {
   if (G.state !== 'paused') { acc += dt; while (acc >= STEP) { update(STEP); acc -= STEP; } }
   render(ts / 1000);
 }
+/* ?showcase: used by the teaser page. A silent, hands-off autopilot tour of the best levels (no menus, nothing saved). */
+function startShowcase() {
+  $('#ui').style.display = 'none'; Save.d.mute = true; Save.flush = () => {};
+  const tour = [3, 10, 19, 25, 30, 36, 40, 45, 50, 55, 60]; let i = 0, t0 = 0;
+  const begin = () => {
+    const L = tour[i++ % tour.length]; startLevel(L, 'fresh'); G.banner = 1.4; t0 = performance.now(); const k = G.hz.kong; if (k) k.t = Math.min(k.t, 3.5);
+    for (const key of Object.keys(G.hz.t)) if (G.hz.t[key]) G.hz.t[key] = Math.min(G.hz.t[key], 2 + Math.random() * 4); if (G.cfg.storm) G.hz.t.storm = Math.min(G.hz.t.storm, 7);
+  };
+  begin();
+  setInterval(() => {
+    if (G.state !== 'playing') { begin(); return; } G.lives = 3; G.deliveries = Math.min(G.deliveries, G.cfg.quota - 2);
+    if ((performance.now() - t0) / 1000 > (G.cfg.kong ? 21 : 13)) { begin(); return; }
+    let t = null; for (const p of G.parcels) { if (p.passed || p.kind === 'bomb' || p.kind === 'junk' || p.kind === 'fish') continue; if (!t || p.y > t.y) t = p; }
+    let tx = 195; if (t) { const tr = Math.max(0, (640 - t.y) / t.vy); tx = clamp(t.x + (G.stormWind + (t.vx || 0) + (t.dvx || 0)) * tr, 20, 370); }
+    for (const b of G.parcels) if ((b.kind === 'bomb' || b.kind === 'junk') && !b.passed && b.y > 300 && Math.abs(b.x - tx) < 60) tx = b.x < tx ? Math.max(tx, b.x + 60) : Math.min(tx, b.x - 60);
+    inp.left = inp.right = false; inp.dragX = tx; const k = G.hz.kong; if (Math.random() < (k && k.ph === 'cling' ? .35 : .06)) sprayNow();
+  }, 100);
+}
 function boot() {
   Save.load(); bgScale = Math.min(2, Math.max(1, window.devicePixelRatio || 1)); resize();
   $('#pay-dev').hidden = !Billing.isDev; updatePriceLabels(); if (Billing.native()) Billing.init().then(() => { refreshTitle(); });
   buildHow(); refreshTitle(); startDemo(); show('title');
+  if (SHOWCASE) startShowcase();
   if (document.fonts && document.fonts.load) { document.fonts.load(`700 24px "Space Mono"`); document.fonts.load(`700 20px "Space Grotesk"`); }
   requestAnimationFrame(frame);
   if (Billing.isDev) window.__dd = { G, CONFIG, Save, Billing, buildGarage, VEHICLES, sprayNow, startVictory, startLevel, levelCfg, levelInfo, buildBG, WORLDS, act, update, show, render, inp, syncInput,
