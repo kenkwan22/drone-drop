@@ -1,6 +1,6 @@
 # Taking Drone Drop to the App Store and Google Play
 
-The repo is already wrapped with [Capacitor](https://capacitorjs.com): `android/` and `ios/` projects exist, the web game is copied into them by `npm run sync`, and the A$9.99 World Tour purchase uses the stores' own in-app purchase through [RevenueCat](https://www.revenuecat.com) (free until you earn real revenue). What is left is accounts, store listings, keys and builds, all of which need you.
+The repo is already wrapped with [Capacitor](https://capacitorjs.com): `android/` and `ios/` projects exist, the web game is copied into them by `npm run sync`, and the A$6 World Tour purchase uses the stores' own in-app purchase through [RevenueCat](https://www.revenuecat.com) (free until you earn real revenue). What is left is accounts, store listings, keys and builds, all of which need you.
 
 ## 0. Test it on your phone right now (no store needed)
 
@@ -26,10 +26,10 @@ Your **account email** is only what you sign in to Apple Developer, Google Play 
 
 ## 3. Create the purchase
 
-The store sells **one non-consumable (one-time) product** that unlocks levels 9-60. Set the base price to **A$9.99 (AUD)**, which is an available price point in both stores (the app shows each player's local price automatically).
+The store sells **one non-consumable (one-time) product** that unlocks levels 9-60. Set the base price to **A$6 (AUD)**. Google Play lets you type any price, so A$6.00 works there. Apple uses fixed price points, so pick the closest one it offers (A$5.99 matches best) (the app shows each player's local price automatically).
 
-1. **App Store Connect:** create the app, then *Monetization, In-App Purchases*: type *Non-Consumable*, product ID `drone_drop_world_tour`, price A$9.99 (AUD), name "World Tour", description "Unlock levels 9 to 60", add a review screenshot of the paywall.
-2. **Play Console:** create the app, then *Monetize, In-app products*: product ID `drone_drop_world_tour`, price A$9.99 (AUD), active.
+1. **App Store Connect:** create the app, then *Monetization, In-App Purchases*: type *Non-Consumable*, product ID `drone_drop_world_tour`, price A$6 (AUD), name "World Tour", description "Unlock levels 9 to 60", add a review screenshot of the paywall.
+2. **Play Console:** create the app, then *Monetize, In-app products*: product ID `drone_drop_world_tour`, price A$6 (AUD), active.
 3. **RevenueCat dashboard:** create a project, add an iOS app and an Android app, import the two products, create an **entitlement named `world_tour`** and attach both products, create an **offering** `default` with a *Lifetime* package containing the product.
 4. Copy the two **public SDK keys** (one for iOS, one for Android) into `CONFIG.billing.revenueCat` near the top of `index.html`:
 

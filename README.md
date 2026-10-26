@@ -77,7 +77,7 @@ Six cosmetic vehicles, unlocked by total stars (see `VEHICLES` in `index.html`):
 
 ## Paywall
 
-Levels 1-8 are free. Levels 9-60 are the **World Tour**, a one-time purchase of A$9.99 (Australian dollars) (`CONFIG.billing`).
+Levels 1-8 are free. Levels 9-60 are the **World Tour**, a one-time purchase of A$6 (Australian dollars) (`CONFIG.billing`).
 
 **The plan is the app stores.** The repo is wrapped with Capacitor (`android/`, `ios/`), and in the apps the purchase goes through Apple / Google in-app purchase via RevenueCat, which is the source of truth for the unlock (refunds re-lock, Restore Purchases works, the price shown is localised). Full steps, accounts and checklists are in [`docs/APP_STORE.md`](docs/APP_STORE.md).
 
