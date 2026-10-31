@@ -53,7 +53,7 @@ Until the Paid Apps Agreement shows **Active**, the in-app purchase cannot be te
    - **Type:** Non-Consumable
    - **Reference Name:** `World Tour`
    - **Product ID:** `drone_drop_world_tour` (must match exactly; it cannot be changed later)
-3. **Price Schedule:** base country **Australia**. Apple's price points are fixed, so pick the nearest to A$6, which is **A$5.99**. Apple converts it for other countries.
+3. **Price Schedule:** base country **Australia**. Apple's price points are fixed, so pick **A$5.99**. Apple converts it for other countries.
 4. **Availability:** all countries.
 5. **App Store Localization (English, Australia):**
    - Display name: `World Tour`
