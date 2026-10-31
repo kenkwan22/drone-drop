@@ -1,7 +1,7 @@
 {
   "name": "Drone Drop",
   "short_name": "Drone Drop",
-  "description": "Catch every parcel. Outsmart the pelican. 60 levels across 17 worlds.",
+  "description": "Catch every parcel. Outsmart the pelican. 60 levels across 20+ worlds.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "fullscreen",

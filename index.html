@@ -2213,7 +2213,7 @@ function buildHow() {
     ['pelican', 'From level 4 the pelican shows a <b>!</b>, then snatches a parcel or drops a <b>decoy fish</b>. Seagulls knock parcels sideways or steal them. Tap <b>SPRAY</b> (or Space) to blast them with your water cannon: 3 shots, refilling over time.'],
     ['gold', '<b>Golden parcels</b> score 50. <b>Bombs</b> cost a life, so let them fall into the sea.'],
     ['power', '<b>Bubbles</b> help you: heart (+1 life), clock (slow motion) and magnet (wider catch).'],
-    ['world', 'Hit each level\'s delivery target to travel on. <b>60 levels across 17 worlds</b>, from harbour towns to a cyberpunk megacity. Levels 1 to 8 are free.']];
+    ['world', 'Hit each level\'s delivery target to travel on. <b>60 levels across 20+ worlds</b>, from harbour towns to a cyberpunk megacity. Levels 1 to 8 are free.']];
   $('#how-list').innerHTML = rows.map(r => `<div class="how card"><canvas width="128" height="112" data-i="${r[0]}"></canvas><p>${r[1]}</p></div>`).join('');
   document.querySelectorAll('#how-list canvas').forEach(cv3 => {
     const c = cv3.getContext('2d'), k = cv3.dataset.i; c.scale(2, 2); c.translate(32, 34);

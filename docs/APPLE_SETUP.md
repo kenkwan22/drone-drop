@@ -90,7 +90,7 @@ npm run assets                 # makes every icon and splash size from assets/ic
 npm run ios                    # copies the game in and opens Xcode
 ```
 
-(`npm run assets` may ask you to approve the image tool: run `npm approve-scripts sharp` and try again.)
+(If `npm run assets` fails, tell me the error message and I will fix it.)
 
 ## Step 8. Build in Xcode
 
@@ -124,7 +124,7 @@ In App Store Connect, **Distribution**, **iOS App**, version **1.0 Prepare for S
   CATCH, COMBO, TURBO
   Catch five in a row to fire up turbo: faster, double points and a water cannon to blast the pelican away.
 
-  60 LEVELS, 17 WORLDS
+  60 LEVELS, 20+ WORLDS
   From a sunset harbour to London, Paris, Sydney, Los Angeles, Egypt, Dubai, Saudi Arabia, Tokyo, Mount Fuji, China and Hawaii, then a volcano island and a neon cyberpunk city.
 
   TAKE TO THE SKY

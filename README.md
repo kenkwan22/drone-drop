@@ -1,6 +1,6 @@
 # Drone Drop
 
-A one-button-at-a-time catch game in the spirit of Game & Watch *Parachute*. A drone drops parcels, you slide a delivery van to catch them, and a pelican on the right edge causes trouble. From level 30 you fly a plane through the sky. 60 levels across 17 worlds.
+A one-button-at-a-time catch game in the spirit of Game & Watch *Parachute*. A drone drops parcels, you slide a delivery van to catch them, and a pelican on the right edge causes trouble. From level 30 you fly a plane through the sky. 60 levels across 20+ worlds.
 
 Single self-contained `index.html` (HTML5 canvas, no build step, no dependencies besides Google Fonts). Portrait phone first (390 x 844 logical scene, scaled to fit), playable on desktop.
 
