@@ -79,7 +79,7 @@ Six cosmetic vehicles, unlocked by total stars (see `VEHICLES` in `index.html`):
 
 Levels 1-8 are free. Levels 9-60 are the **World Tour**, a one-time purchase of A$5.99 (Australian dollars) (`CONFIG.billing`).
 
-**The plan is the app stores.** The repo is wrapped with Capacitor (`android/`, `ios/`), and in the apps the purchase goes through Apple / Google in-app purchase via RevenueCat, which is the source of truth for the unlock (refunds re-lock, Restore Purchases works, the price shown is localised). Full steps, accounts and checklists are in [`docs/APP_STORE.md`](docs/APP_STORE.md).
+**The plan is the app stores.** The repo is wrapped with Capacitor (`android/`, `ios/`), and in the apps the purchase goes through Apple / Google in-app purchase via RevenueCat, which is the source of truth for the unlock (refunds re-lock, Restore Purchases works, the price shown is localised). Full steps, accounts and checklists are in [`docs/APP_STORE.md`](docs/APP_STORE.md), with step-by-step walkthroughs in [`docs/APPLE_SETUP.md`](docs/APPLE_SETUP.md) and [`docs/GOOGLE_PLAY_SETUP.md`](docs/GOOGLE_PLAY_SETUP.md).
 
 The website (GitHub Pages) is a free demo: levels 1-8, and the paywall says the full game is coming to the apps. A web checkout path still exists (`CONFIG.billing.checkoutUrl` and `verifyUrl`, e.g. Stripe), but a static page cannot safely confirm a payment by itself, so it is off by default and the build is fail-closed. The "Test unlock" button only appears on `localhost` and home-network addresses.
 
