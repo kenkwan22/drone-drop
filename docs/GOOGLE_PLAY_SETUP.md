@@ -31,7 +31,7 @@ Copy the folder `C:\Users\kenkw\drone-drop-keys` (the `.jks` file and `keystore.
 
 Play Console shows these as a checklist. Answers for this game:
 
-- **Privacy policy:** a URL is required. Ask me to add a privacy page to your site.
+- **Privacy policy:** `https://kenkwan22.github.io/drone-drop/privacy/`
 - **App access:** *All functionality is available without special access* (no login).
 - **Ads:** *No, my app does not contain ads.*
 - **Content rating:** start the questionnaire, category **Game**. Answer **No** to everything except cartoon or fantasy violence (mild: bombs, an ape, lightning). Expect a low rating (Everyone or 7+).
@@ -108,9 +108,9 @@ Go to **Grow users, Store presence, Main store listing**. Copy and paste:
   A game by Mont Saba Works.
   ```
 - **App icon:** `assets/icon-512.png` (512 x 512).
-- **Feature graphic:** 1024 x 500 pixels, required. Ask me to make one from the game art.
-- **Phone screenshots:** at least 2, up to 8 (portrait, e.g. 1080 x 1920 or taller). Ask me to generate them from the game.
-- **Category:** Game, **Arcade**. **Contact email**, **website** (the teaser page), and the **privacy policy URL**.
+- **Feature graphic:** `store/google-feature-graphic-1024x500.png` (1024 x 500, required).
+- **Phone screenshots:** `store/google-phone-1080x2160/` (10 PNGs, 1080 x 2160; Google needs at least 2 and shows up to 8, so upload files 01 to 08 or pick your favourites).
+- **Category:** Game, **Arcade**. **Website:** `https://kenkwan22.github.io/drone-drop/teaser/`. **Contact email:** Play Console requires one here; use an address you are happy to show publicly. Privacy policy URL as above.
 
 ## Step 9. Closed test with real testers (new personal accounts)
 

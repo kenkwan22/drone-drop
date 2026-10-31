@@ -143,12 +143,12 @@ In App Store Connect, **Distribution**, **iOS App**, version **1.0 Prepare for S
 
   A game by Mont Saba Works.
   ```
-- **Support URL:** your contact page (the teaser page for now: `https://kenkwan22.github.io/drone-drop/teaser/`). Apple also wants a way to contact you; add a support email.
+- **Support URL:** `https://kenkwan22.github.io/drone-drop/support/`
 - **Marketing URL:** `https://kenkwan22.github.io/drone-drop/teaser/`
 - **Copyright:** `2026 Mont Saba Works` (or your own name if you enrolled as an individual).
-- **Privacy Policy URL:** required. Ask me to add a privacy page to your site and use its address.
+- **Privacy Policy URL:** `https://kenkwan22.github.io/drone-drop/privacy/`
 - **Category:** Primary **Games**, subcategory **Arcade**; secondary **Casual**.
-- **Screenshots:** at least one set, the **6.9-inch iPhone** size (1320 x 2868). Use 5 to 8 of the gameplay shots. Ask me to generate them at the exact size.
+- **Screenshots:** ready in `store/apple-6.9in-1320x2868/` (10 PNGs, exactly 1320 x 2868, the **6.9-inch iPhone** size; Apple scales them for smaller iPhones). Upload them in file-name order; Apple allows up to 10. The paywall shot (09) shows A$5.99; if you change the price, re-run the capture.
 - **Build:** click **+** and choose the build you uploaded in step 8.
 - **In-App Purchases and Subscriptions:** click **+** and add `World Tour` (first submission only; attach it here).
 
