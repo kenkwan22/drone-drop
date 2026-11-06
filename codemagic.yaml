@@ -1,0 +1,62 @@
+workflows:
+  ios-app-store:
+    name: Drone Drop iOS (App Store)
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      # Codemagic > Teams > Integrations > App Store Connect: add an API key and name it "codemagic"
+      app_store_connect: codemagic
+    environment:
+      groups:
+        # Codemagic > App > Environment variables: group "drone_drop" with RC_IOS_KEY (appl_..., Secure)
+        # and APP_STORE_APPLE_ID (the numeric Apple ID shown in App Store Connect > App Information)
+        - drone_drop
+      vars:
+        BUNDLE_ID: "com.kenkwan22.dronedrop"
+        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+        XCODE_SCHEME: "App"
+      node: 20
+      xcode: latest
+      cocoapods: default
+    triggering:
+      events: []   # run manually from the Codemagic UI
+    scripts:
+      - name: Install dependencies
+        script: npm ci
+      - name: Refuse test keys
+        script: |
+          case "$RC_IOS_KEY" in
+            appl_*) echo "RC_IOS_KEY looks right" ;;
+            *) echo "RC_IOS_KEY must start with appl_ (never ship a test_ key)"; exit 1 ;;
+          esac
+      - name: Generate icons and splash
+        script: npm run assets
+      - name: Copy web game into iOS project (injects RevenueCat key)
+        script: npm run sync
+      - name: Install Pods
+        script: cd ios/App && pod install
+      - name: Set up code signing
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE --create
+          keychain add-certificates
+          xcode-project use-profiles --project ios/App/App.xcodeproj
+      - name: Set build number
+        script: |
+          LATEST=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
+          cd ios/App
+          agvtool new-version -all $((LATEST + 1))
+      - name: Build ipa
+        script: |
+          xcode-project build-ipa \
+            --workspace "$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        # Submission for App Review is done by hand in App Store Connect after TestFlight testing.
