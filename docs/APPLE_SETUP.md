@@ -122,7 +122,7 @@ In App Store Connect, **Distribution**, **iOS App**, version **1.0 Prepare for S
   A drone drops the parcels. You slide the van to catch them. Easy? Not with a thieving pelican, mischievous seagulls, wind and lightning around.
 
   A HOMAGE TO THE CLASSICS
-  Drone Drop pays homage to classic arcade and handheld games such as Donkey Kong, Fire and Parachute: one simple idea, quick reflexes, a score to beat, and a giant ape who will not leave you alone. Not affiliated with or endorsed by the owners of those games.
+  Drone Drop is a homage to the original classic handheld games: one simple idea, quick reflexes and a score to beat. Easy to learn, hard to put down.
 
   CATCH, COMBO, TURBO
   Catch five in a row to fire up turbo: faster, double points and a water cannon to blast the pelican away.
@@ -146,7 +146,6 @@ In App Store Connect, **Distribution**, **iOS App**, version **1.0 Prepare for S
 
   A game by Mont Saba Works.
   ```
-- **Trademark note:** the description names classic games as an homage. Apple can reject an app whose *metadata* uses other companies' trademarks (App Review Guideline 2.3.7), so keep those names out of the app name, subtitle, promotional text and keywords (they are), and if review objects, replace that paragraph with: `Drone Drop is a homage to the classic arcade and handheld catch games of the 1980s: one simple idea, quick reflexes and a score to beat.`
 - **Support URL:** `https://kenkwan22.github.io/drone-drop/support/`
 - **Marketing URL:** `https://kenkwan22.github.io/drone-drop/teaser/`
 - **Copyright:** `2026 Mont Saba Works` (or your own name if you enrolled as an individual).
