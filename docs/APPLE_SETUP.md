@@ -66,11 +66,11 @@ Until the Paid Apps Agreement shows **Active**, the in-app purchase cannot be te
 1. Create a free account at **revenuecat.com**, then create a **Project** named `Drone Drop`.
 2. **Apps**, then add an **iOS** app: App name `Drone Drop`, Bundle ID `com.kenkwan22.dronedrop`.
 3. RevenueCat asks for an **In-App Purchase Key**. Create it in App Store Connect: **Users and Access, Integrations, In-App Purchase, Generate**. Download the `.p8` file (you can only download it once), and paste its Key ID and Issuer ID into RevenueCat, then upload the `.p8`.
-4. In RevenueCat: **Products**, add `drone_drop_world_tour`. **Entitlements**, create one named exactly `world_tour` and attach the product. **Offerings**, open `default`, add a package of type **Lifetime** and choose the product.
+4. In RevenueCat: **Products**, add `drone_drop_world_tour`. **Entitlements**, create one named exactly `drone_drop_pro` and attach the product. **Offerings**, open `default`, add a package of type **Lifetime** and choose the product.
 5. Copy the iOS **Public SDK key** (starts with `appl_`). Open `index.html` in the repo and paste it here, then save and commit:
 
    ```js
-   revenueCat: { iosKey: 'appl_XXXXXXXX', androidKey: '', entitlement: 'world_tour' }
+   revenueCat: { iosKey: 'appl_XXXXXXXX', androidKey: '', entitlement: 'drone_drop_pro' }
    ```
 
    Public SDK keys are designed to be public; it is safe to store them in the repo.

@@ -30,14 +30,25 @@ The store sells **one non-consumable (one-time) product** that unlocks levels 9-
 
 1. **App Store Connect:** create the app, then *Monetization, In-App Purchases*: type *Non-Consumable*, product ID `drone_drop_world_tour`, price A$5.99 (AUD), name "World Tour", description "Unlock levels 9 to 60", add a review screenshot of the paywall.
 2. **Play Console:** create the app, then *Monetize, In-app products*: product ID `drone_drop_world_tour`, price A$5.99 (AUD), active.
-3. **RevenueCat dashboard:** create a project, add an iOS app and an Android app, import the two products, create an **entitlement named `world_tour`** and attach both products, create an **offering** `default` with a *Lifetime* package containing the product.
+3. **RevenueCat dashboard:** create a project, add an iOS app and an Android app, import the two products, create an **entitlement named `drone_drop_pro`** and attach both products, create an **offering** `default` with a *Lifetime* package containing the product.
 4. Copy the two **public SDK keys** (one for iOS, one for Android) into `CONFIG.billing.revenueCat` near the top of `index.html`:
 
    ```js
-   revenueCat: { iosKey: 'appl_...', androidKey: 'goog_...', entitlement: 'world_tour' }
+   revenueCat: { iosKey: 'appl_...', androidKey: 'goog_...', entitlement: 'drone_drop_pro' }
    ```
 
    These keys are meant to be public. Until they are filled in, the apps fail closed: nothing unlocks.
+
+### Testing purchases before the stores are ready (RevenueCat Test Store)
+
+RevenueCat gives every project a free **Test Store** with a public SDK key that starts with `test_`. It lets you run the whole purchase flow (paywall, price from RevenueCat, "Test valid purchase", entitlement `drone_drop_pro`, restore) with no real money and no store account. The key is injected at build time so it never lands in git:
+
+```bash
+RC_ANDROID_KEY=test_xxxxxxxx npm run sync      # Windows PowerShell: $env:RC_ANDROID_KEY='test_xxxxxxxx'; npm run sync
+cd android && gradlew assembleDebug
+```
+
+**Never ship a `test_` key.** RevenueCat's SDK crashes in a release build that uses one, and the stores reject such builds. For release, paste the real `goog_...` / `appl_...` keys into `CONFIG.billing.revenueCat` in `index.html` (or set `RC_ANDROID_KEY` / `RC_IOS_KEY` for the build), and run `npm run sync` again with no `test_` key in your environment.
 
 ## 4. Build
 

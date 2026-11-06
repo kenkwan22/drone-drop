@@ -269,7 +269,7 @@ const CONFIG = {
   billing: {
     productId: 'drone-drop-world-tour',
     priceAUD: 5.99,   // the World Tour price in Australian dollars; in the apps the real localised price comes from the store
-    revenueCat: { iosKey: '', androidKey: '', entitlement: 'world_tour' },   // public SDK keys from the RevenueCat dashboard (see docs/APP_STORE.md)
+    revenueCat: { iosKey: '', androidKey: '', entitlement: 'drone_drop_pro' },   // public SDK keys from the RevenueCat dashboard (see docs/APP_STORE.md)
     // Production purchases need a server that confirms payment (see README):
     checkoutUrl: '',   // e.g. a Stripe Payment Link
     verifyUrl: ''      // endpoint returning {"paid":true} for ?client_id=...
@@ -316,7 +316,8 @@ const Save = {
    purchase via RevenueCat, and the entitlement it reports is the source of truth. On the web the flag is local and
    real money must be confirmed server-side (verifyUrl); see README "Payments" and docs/APP_STORE.md. */
 const Billing = {
-  isDev: ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname) || /^(192\.168|10|172\.(1[6-9]|2\d|3[01]))(\.\d{1,3}){2,3}$/.test(location.hostname),   // this computer or a home-network IP only, never a real domain name
+  isDev: !(window.Capacitor && typeof Capacitor.isNativePlatform === 'function' && Capacitor.isNativePlatform()) &&   // never inside the store apps: Capacitor serves them from https://localhost
+    (['localhost', '127.0.0.1', '[::1]'].includes(location.hostname) || /^(192\.168|10|172\.(1[6-9]|2\d|3[01]))(\.\d{1,3}){2,3}$/.test(location.hostname)),   // this computer or a home-network IP only, never a real domain name
   rc: null, pkg: null, price: '',
   native() { return !!(window.Capacitor && typeof Capacitor.isNativePlatform === 'function' && Capacitor.isNativePlatform()); },
   priceLabel() { return this.price || 'A$' + CONFIG.billing.priceAUD; },
@@ -327,7 +328,9 @@ const Billing = {
     try {
       const rcfg = CONFIG.billing.revenueCat, key = Capacitor.getPlatform() === 'ios' ? rcfg.iosKey : rcfg.androidKey;
       if (!key) { console.warn('RevenueCat key missing: purchases are disabled in this build.'); return; }
-      this.rc = Capacitor.registerPlugin('Purchases'); await this.rc.configure({ apiKey: key });
+      this.rc = Capacitor.registerPlugin ? Capacitor.registerPlugin('Purchases') : Capacitor.Plugins && Capacitor.Plugins.Purchases;   // the game is not bundled with @capacitor/core, so the native bridge exposes plugins under Capacitor.Plugins
+      if (!this.rc) { console.warn('RevenueCat plugin not found in this build.'); return; }
+      await this.rc.configure({ apiKey: key });
       await this.refresh();
       const o = await this.rc.getOfferings(), cur = o && o.current;
       this.pkg = cur && cur.availablePackages && (cur.availablePackages.find(p => p.packageType === 'LIFETIME') || cur.availablePackages[0]) || null;

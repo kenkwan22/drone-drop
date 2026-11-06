@@ -58,11 +58,11 @@ Play Console shows these as a checklist. Answers for this game:
    - then in Play Console **Users and permissions, Invite new users**, enter the service account email, and give it *View app information*, *View financial data*, and *Manage orders and subscriptions*,
    - upload the JSON to RevenueCat, and tick the Pub/Sub notification option if offered.
    (Permissions can take up to 36 hours to take effect.)
-3. In RevenueCat add the product `drone_drop_world_tour` under **Products**, attach it to the **entitlement** `world_tour`, and add it to the `default` **offering** as the Lifetime package (the same entitlement and offering the iOS app uses).
+3. In RevenueCat add the product `drone_drop_world_tour` under **Products**, attach it to the **entitlement** `drone_drop_pro`, and add it to the `default` **offering** as the Lifetime package (the same entitlement and offering the iOS app uses).
 4. Copy the Android **Public SDK key** (starts with `goog_`). In `index.html`, near the top, set:
 
    ```js
-   revenueCat: { iosKey: 'appl_...', androidKey: 'goog_XXXXXXXX', entitlement: 'world_tour' }
+   revenueCat: { iosKey: 'appl_...', androidKey: 'goog_XXXXXXXX', entitlement: 'drone_drop_pro' }
    ```
 
 5. Rebuild: `npm run sync`, then `cd android` and `gradlew bundleRelease`. Raise `versionCode` in `android/app/build.gradle` first (each upload needs a higher number). The build needs the JDK 21 folder and the key folder from step 0.
