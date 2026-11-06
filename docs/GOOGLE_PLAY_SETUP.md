@@ -80,10 +80,14 @@ Play Console shows these as a checklist. Answers for this game:
 Go to **Grow users, Store presence, Main store listing**. Copy and paste:
 
 - **Short description (80 max):** `Catch parcels, dodge a thieving pelican, then fly through storms and space.`
+- **Trademark note:** the full description names classic games as an homage. Google's Metadata policy can flag other companies' brand names, so keep them out of the app title and short description (they are), and if Google objects, replace that paragraph with: `Drone Drop is a homage to the classic arcade and handheld catch games of the 1980s: one simple idea, quick reflexes and a score to beat.`
 - **Full description (4000 max):**
 
   ```
   A drone drops the parcels. You slide the van to catch them. Easy? Not with a thieving pelican, mischievous seagulls, wind and lightning around.
+
+  A HOMAGE TO THE CLASSICS
+  Drone Drop pays homage to classic arcade and handheld games such as Donkey Kong, Fire and Parachute: one simple idea, quick reflexes, a score to beat, and a giant ape who will not leave you alone. Not affiliated with or endorsed by the owners of those games.
 
   CATCH, COMBO, TURBO
   Catch five in a row to fire up turbo: faster, double points and a water cannon to blast the pelican away.
