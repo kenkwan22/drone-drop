@@ -26,8 +26,6 @@ workflows:
       - name: Check RevenueCat key is a real iOS key
         script: |
           grep -q "iosKey: 'appl_" index.html || { echo "iosKey in index.html must start with appl_ (never ship a test_ key)"; exit 1; }
-      - name: Generate icons and splash
-        script: npm run assets
       - name: Copy web game into iOS project
         script: npm run sync
       - name: Install Pods
