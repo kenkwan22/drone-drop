@@ -10,7 +10,7 @@ workflows:
       groups:
         # Codemagic > App > Environment variables: group "drone_drop" with APP_STORE_APPLE_ID
         # (the numeric Apple ID shown in App Store Connect > App Information)
-        # and CERTIFICATE_PRIVATE_KEY (Secure): an RSA private key used to create the signing certificate
+        # and CERT_KEY_BASE64 (Secure): the RSA private key as one line of base64 text
         - drone_drop
       vars:
         BUNDLE_ID: "com.kenkwan22.dronedrop"
@@ -31,15 +31,17 @@ workflows:
         script: npm run sync
       - name: Install Pods
         script: cd ios/App && pod install
-      - name: Check signing key is set
+      - name: Prepare signing key
         script: |
-          [ -n "$CERTIFICATE_PRIVATE_KEY" ] || { echo "CERTIFICATE_PRIVATE_KEY is missing: add it as a Secure variable in the drone_drop group"; exit 1; }
+          [ -n "$CERT_KEY_BASE64" ] || { echo "CERT_KEY_BASE64 is missing: add it as a Secure variable in the drone_drop group"; exit 1; }
+          echo "$CERT_KEY_BASE64" | tr -d ' \r\n' | base64 --decode > "$HOME/codemagic_key.pem"
+          openssl rsa -in "$HOME/codemagic_key.pem" -noout -check || { echo "CERT_KEY_BASE64 is not a valid RSA private key: make it again from the Mac Terminal"; exit 1; }
       - name: Set up code signing
         script: |
           keychain initialize
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE --create \
-            --certificate-key @env:CERTIFICATE_PRIVATE_KEY
+            --certificate-key @file:$HOME/codemagic_key.pem
           keychain add-certificates
           xcode-project use-profiles --project ios/App/App.xcodeproj
       - name: Set build number
