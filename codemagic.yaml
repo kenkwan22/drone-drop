@@ -51,5 +51,5 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
-        submit_to_testflight: true
-        # Submission for App Review is done by hand in App Store Connect after TestFlight testing.
+        submit_to_testflight: false
+        # The build uploads to App Store Connect and shows in TestFlight for internal testers. Submission for App Review is done by hand.
