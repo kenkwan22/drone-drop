@@ -10,12 +10,14 @@ workflows:
       groups:
         # Codemagic > App > Environment variables: group "drone_drop" with APP_STORE_APPLE_ID
         # (the numeric Apple ID shown in App Store Connect > App Information)
-        # and CERT_KEY_BASE64 (Secure): the RSA private key as one line of base64 text
         - drone_drop
       vars:
         BUNDLE_ID: "com.kenkwan22.dronedrop"
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.kenkwan22.dronedrop
       node: 20
       xcode: latest
       cocoapods: default
@@ -31,19 +33,8 @@ workflows:
         script: npm run sync
       - name: Install Pods
         script: cd ios/App && pod install
-      - name: Prepare signing key
-        script: |
-          [ -n "$CERT_KEY_BASE64" ] || { echo "CERT_KEY_BASE64 is missing: add it as a Secure variable in the drone_drop group"; exit 1; }
-          echo "$CERT_KEY_BASE64" | tr -d ' \r\n' | base64 --decode > "$HOME/codemagic_key.pem"
-          openssl rsa -in "$HOME/codemagic_key.pem" -noout -check || { echo "CERT_KEY_BASE64 is not a valid RSA private key: make it again from the Mac Terminal"; exit 1; }
-      - name: Set up code signing
-        script: |
-          keychain initialize
-          app-store-connect fetch-signing-files "$BUNDLE_ID" \
-            --type IOS_APP_STORE --create \
-            --certificate-key @file:$HOME/codemagic_key.pem
-          keychain add-certificates
-          xcode-project use-profiles --project ios/App/App.xcodeproj
+      - name: Apply code signing to the Xcode project
+        script: xcode-project use-profiles
       - name: Set build number
         script: |
           LATEST=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
