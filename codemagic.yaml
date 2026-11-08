@@ -4,8 +4,8 @@ workflows:
     instance_type: mac_mini_m2
     max_build_duration: 60
     integrations:
-      # Codemagic > Teams > Integrations > App Store Connect: add an API key and name it "codemagic"
-      app_store_connect: codemagic
+      # Codemagic > Teams > Integrations > App Store Connect: add an API key and name it "Codemagic"
+      app_store_connect: Codemagic
     environment:
       groups:
         # Codemagic > App > Environment variables: group "drone_drop" with APP_STORE_APPLE_ID
