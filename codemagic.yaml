@@ -8,8 +8,8 @@ workflows:
       app_store_connect: codemagic
     environment:
       groups:
-        # Codemagic > App > Environment variables: group "drone_drop" with RC_IOS_KEY (appl_..., Secure)
-        # and APP_STORE_APPLE_ID (the numeric Apple ID shown in App Store Connect > App Information)
+        # Codemagic > App > Environment variables: group "drone_drop" with APP_STORE_APPLE_ID
+        # (the numeric Apple ID shown in App Store Connect > App Information)
         - drone_drop
       vars:
         BUNDLE_ID: "com.kenkwan22.dronedrop"
@@ -23,15 +23,12 @@ workflows:
     scripts:
       - name: Install dependencies
         script: npm ci
-      - name: Refuse test keys
+      - name: Check RevenueCat key is a real iOS key
         script: |
-          case "$RC_IOS_KEY" in
-            appl_*) echo "RC_IOS_KEY looks right" ;;
-            *) echo "RC_IOS_KEY must start with appl_ (never ship a test_ key)"; exit 1 ;;
-          esac
+          grep -q "iosKey: 'appl_" index.html || { echo "iosKey in index.html must start with appl_ (never ship a test_ key)"; exit 1; }
       - name: Generate icons and splash
         script: npm run assets
-      - name: Copy web game into iOS project (injects RevenueCat key)
+      - name: Copy web game into iOS project
         script: npm run sync
       - name: Install Pods
         script: cd ios/App && pod install
